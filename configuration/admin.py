@@ -1,3 +1,7 @@
 from django.contrib import admin
+from .models import GymConfig
 
-# Register your models here.
+
+@admin.register(GymConfig)
+class GymConfigAdmin(admin.ModelAdmin):
+    list_display = ("nombre", "bcv")

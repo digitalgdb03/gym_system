@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+{% load widget_tweaks %}
+{% block page_title %}Configuración{% endblock %}
+{% block page_sub %}Tasa manual y datos del gimnasio{% endblock %}
+
+{% block content %}
+<form method="post" class="card" style="max-width:560px">
+  {% csrf_token %}
+  <h3>Datos del gimnasio y tasa</h3>
+  {% for field in form %}
+    <div class="field">
+      <label>{{ field.label }}</label>
+      {% render_field field class="input" %}
+      {% for error in field.errors %}<div class="msg error">{{ error }}</div>{% endfor %}
+    </div>
+  {% endfor %}
+  <button type="submit" class="btn btn-primary" style="margin-top:14px">Guardar</button>
+</form>
+{% endblock %}
