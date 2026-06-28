@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+{% load widget_tweaks %}
+{% block page_title %}{% if object %}Editar plan{% else %}Nuevo plan{% endif %}{% endblock %}
+
+{% block content %}
+<form method="post" class="card" style="max-width:560px">
+  {% csrf_token %}
+  {% for field in form %}
+    <div class="field">
+      <label>{{ field.label }}</label>
+      {% render_field field class="input" %}
+      {% if field.help_text %}<div class="field-hint">{{ field.help_text }}</div>{% endif %}
+      {% for error in field.errors %}<div class="msg error">{{ error }}</div>{% endfor %}
+    </div>
+  {% endfor %}
+  <div style="margin-top:16px;display:flex;gap:10px">
+    <button type="submit" class="btn btn-primary">Guardar</button>
+    <a href="{% url 'plans:list' %}" class="btn">Cancelar</a>
+  </div>
+</form>
+{% endblock %}

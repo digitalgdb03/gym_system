@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+{% load gym_extras %}
+{% block page_title %}Planes{% endblock %}
+{% block page_sub %}Tarifas por área y duración{% endblock %}
+
+{% block content %}
+<div style="display:flex;justify-content:flex-end;margin-bottom:14px">
+  <a class="btn btn-primary" href="{% url 'plans:create' %}">+ Nuevo plan</a>
+</div>
+
+{% for s in areas %}
+<div class="plan-area fade-in">
+  <div class="head">
+    <span class="tag">{{ s.nombre }}</span>
+    <span class="chip-area" style="background:{{ s.color }}">Área de servicio</span>
+  </div>
+  <div class="plan-cards">
+    {% for p in s.planes.all %}
+    <div class="plan">
+      <div class="plan-acts">
+        <a class="icon-btn" href="{% url 'plans:update' p.pk %}">✎</a>
+        <a class="icon-btn del" href="{% url 'plans:delete' p.pk %}">🗑</a>
+      </div>
+      <div class="dur">{{ p.nombre|default:p.duracion }}{% if p.personalizado %} · pers.{% endif %}</div>
+      <div class="price"><small>$</small>{{ p.usd_bcv }}<span class="price-tag">BCV</span></div>
+      <div class="price-bs">≈ Bs {{ p.usd_bcv|bs }}</div>
+      <div class="price2"><b>${{ p.usd_divisas }}</b> divisas <span>· Bs {{ p.usd_divisas|bs }}</span></div>
+      <div class="feat">
+        {% if p.nombre %}Incluye: {% for a in p.incluye.all %}{{ a.nombre }}{% if not forloop.last %} + {% endif %}{% endfor %}
+        {% else %}Acceso a {{ s.nombre }}{% endif %}
+      </div>
+      <div class="feat">{% if p.duracion == "Mensual" %}Congelable{% else %}Sin permanencia{% endif %}</div>
+    </div>
+    {% empty %}
+    <div class="section-note">Sin planes en esta área.</div>
+    {% endfor %}
+  </div>
+</div>
+{% endfor %}
+{% endblock %}

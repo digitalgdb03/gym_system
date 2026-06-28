@@ -1,0 +1,12 @@
+{% extends "base.html" %}
+{% block page_title %}Eliminar plan{% endblock %}
+{% block content %}
+<form method="post" class="card" style="max-width:480px">
+  {% csrf_token %}
+  <p>¿Eliminar el plan <b>{{ object.etiqueta }}</b>?</p>
+  <div style="margin-top:16px;display:flex;gap:10px">
+    <button type="submit" class="btn btn-primary">Sí, eliminar</button>
+    <a href="{% url 'plans:list' %}" class="btn">Cancelar</a>
+  </div>
+</form>
+{% endblock %}
