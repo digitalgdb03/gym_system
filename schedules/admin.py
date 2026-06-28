@@ -1,3 +1,8 @@
 from django.contrib import admin
+from .models import GymClass
 
-# Register your models here.
+
+@admin.register(GymClass)
+class GymClassAdmin(admin.ModelAdmin):
+    list_display = ("service", "get_day_display", "block", "kind", "instructor", "second_instructor")
+    list_filter = ("day", "kind", "service")

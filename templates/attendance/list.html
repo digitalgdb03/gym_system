@@ -1,0 +1,65 @@
+{% extends "base.html" %}
+{% block page_title %}Asistencia{% endblock %}
+{% block page_sub %}Entrada y salida por cédula (acceso libre){% endblock %}
+{% block content %}
+
+<div class="toolbar">
+  <form method="post" action="{% url 'attendance:mark' %}" class="doc-entry">{% csrf_token %}
+    <select name="doc_type" title="Tipo de documento">
+      {% for t in doc_types %}<option value="{{ t }}">{{ t }}-</option>{% endfor %}
+    </select>
+    <input name="number" placeholder="Número de cédula (ej: 25.481.230)" autocomplete="off" autofocus>
+    <button class="btn btn-primary">Marcar entrada</button>
+  </form>
+</div>
+
+<div class="grid cols-3" style="margin-bottom:20px">
+  <div class="card stat"><div class="label">En el gimnasio ahora</div><div class="value">{{ inside }}</div><div class="substat">clientes presentes</div></div>
+  <div class="card stat"><div class="label">Asistencias de hoy</div><div class="value">{{ total }}</div><div class="substat">entradas registradas</div></div>
+  <div class="card stat"><div class="label">Clientes distintos</div><div class="value">{{ distinct }}</div><div class="substat">personas hoy</div></div>
+</div>
+
+<div class="card"><h3>Asistencia de hoy</h3><div class="table-wrap"><table>
+  <thead><tr><th>Cliente</th><th>Cédula</th><th>Estatus</th><th>Entrada</th><th>Salida</th><th>Ubicación</th><th></th></tr></thead>
+  <tbody>
+  {% for a in records %}
+    <tr>
+      <td><b>{{ a.client.full_name }}</b></td>
+      <td>{{ a.client.id_card }}</td>
+      <td>
+        {% if a.client.status == 'OVERDUE' %}<span class="badge moroso">Moroso</span>
+        {% elif a.client.status == 'FROZEN' %}<span class="badge congelado">Congelado</span>
+        {% else %}<span class="badge activo">Activo</span>{% endif %}
+      </td>
+      <td>{{ a.check_in|date:"g:i A" }}</td>
+      <td>{{ a.check_out|date:"g:i A"|default:"—" }}</td>
+      <td>{% if a.is_inside %}<span class="badge activo">En el gimnasio</span>{% else %}<span class="badge congelado">Se retiró</span>{% endif %}</td>
+      <td style="text-align:right"><div class="row-actions">
+        {% if a.is_inside %}
+          <form method="post" action="{% url 'attendance:checkout' a.pk %}" style="display:inline">{% csrf_token %}
+            <button class="btn btn-ghost" style="padding:6px 12px">Salida</button></form>
+        {% endif %}
+        <form method="post" action="{% url 'attendance:delete' a.pk %}" style="display:inline">{% csrf_token %}
+          <button class="icon-btn del" title="Eliminar">🗑</button></form>
+      </div></td>
+    </tr>
+  {% empty %}<tr><td colspan="7" style="text-align:center;color:var(--muted)">Sin registros hoy.</td></tr>{% endfor %}
+  </tbody>
+</table></div></div>
+
+{% if just_marked %}
+<div id="bigAlert" style="position:fixed;inset:0;background:rgba(0,0,0,.85);display:flex;align-items:center;justify-content:center;z-index:9999">
+  {% if just_marked.status == 'OVERDUE' %}{% with color="#d72c2c" icon="⚠️" %}{% include "attendance/_big_alert.html" %}{% endwith %}
+  {% elif just_marked.status == 'FROZEN' %}{% with color="#1d4ed8" icon="❄️" %}{% include "attendance/_big_alert.html" %}{% endwith %}
+  {% else %}{% with color="#15803d" icon="✅" %}{% include "attendance/_big_alert.html" %}{% endwith %}{% endif %}
+</div>
+<script>
+  (function () {
+    var o = document.getElementById("bigAlert");
+    var close = function () { o.style.opacity = "0"; setTimeout(function () { o.remove(); }, 300); };
+    o.addEventListener("click", close);
+    setTimeout(close, 3500);
+  })();
+</script>
+{% endif %}
+{% endblock %}

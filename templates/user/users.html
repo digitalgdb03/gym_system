@@ -1,0 +1,67 @@
+{% extends "base.html" %}
+{% load widget_tweaks %}
+{% block page_title %}Usuarios{% endblock %}
+{% block page_sub %}Instructores y empleados{% endblock %}
+{% block content %}
+
+<div class="toolbar">
+  <div class="pills">
+    <a class="pill {% if not request.GET.role %}active{% endif %}" href="{% url 'user:list' %}">Todos</a>
+    <a class="pill {% if request.GET.role == 'INSTRUCTOR' %}active{% endif %}" href="?role=INSTRUCTOR">Instructores</a>
+    <a class="pill {% if request.GET.role == 'EMPLOYEE' %}active{% endif %}" href="?role=EMPLOYEE">Empleados</a>
+  </div>
+  <a class="btn btn-primary" href="{% url 'user:create' %}" style="margin-left:auto">+ Nuevo usuario</a>
+</div>
+
+<div class="card"><div class="table-wrap"><table>
+  <thead><tr><th>Nombre</th><th>Cédula</th><th>Correo</th><th>Rol</th><th>Detalle</th><th>Teléfono</th><th></th></tr></thead>
+  <tbody>
+  {% for u in staff %}
+    <tr>
+      <td><b>{{ u.full_name }}</b></td><td>{{ u.id_card|default:"—" }}</td><td>{{ u.email|default:"—" }}</td>
+      <td>{{ u.get_role_display }}</td>
+      <td>{% if u.is_instructor %}{{ u.discipline.name|default:u.detail|default:"—" }}{% else %}{{ u.detail|default:"—" }}{% endif %}</td>
+      <td>{{ u.phone|default:"—" }}</td>
+      <td style="text-align:right"><a href="{% url 'user:update' u.pk %}">Editar</a> · <a href="{% url 'user:delete' u.pk %}">Eliminar</a></td>
+    </tr>
+  {% empty %}<tr><td colspan="7" style="text-align:center;color:var(--muted)">Sin usuarios.</td></tr>{% endfor %}
+  </tbody>
+</table></div></div>
+
+{% if show_form %}
+<div class="modal-overlay" data-close="{% url 'user:list' %}">
+  <div class="modal" role="dialog">
+    <h3 class="modal-title">{% if object %}Editar usuario{% else %}Nuevo usuario{% endif %}</h3>
+    <form method="post">{% csrf_token %}
+      <div class="modal-body">
+        {% if form.non_field_errors %}<div class="msg error">{{ form.non_field_errors }}</div>{% endif %}
+        {% for field in form %}
+          <div class="field"><label>{{ field.label }}</label>{% render_field field class="input" %}
+            {% for e in field.errors %}<div class="msg error">{{ e }}</div>{% endfor %}</div>
+        {% endfor %}
+      </div>
+      <div class="modal-actions">
+        {% if object %}<a class="btn btn-danger" href="{% url 'user:delete' object.pk %}">Eliminar</a>{% endif %}
+        <a class="btn btn-ghost" href="{% url 'user:list' %}">Cancelar</a>
+        <button class="btn btn-primary">Guardar</button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endif %}
+
+{% if show_delete %}
+<div class="modal-overlay" data-close="{% url 'user:list' %}">
+  <div class="modal" role="dialog">
+    <h3 class="modal-title">Eliminar usuario</h3>
+    <div class="modal-body"><p>¿Eliminar a <b>{{ object.full_name }}</b>?</p></div>
+    <form method="post">{% csrf_token %}
+      <div class="modal-actions">
+        <a class="btn btn-ghost" href="{% url 'user:list' %}">Cancelar</a>
+        <button class="btn btn-danger">Sí, eliminar</button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endif %}
+{% endblock %}

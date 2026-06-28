@@ -1,0 +1,63 @@
+{% extends "base.html" %}
+{% load widget_tweaks %}
+{% block page_title %}Clientes{% endblock %}
+{% block page_sub %}Membresías y estados{% endblock %}
+{% block content %}
+
+<div class="toolbar">
+  <form method="get" class="search"><input name="q" value="{{ request.GET.q }}" placeholder="Buscar cliente…"></form>
+  <a class="btn btn-primary" href="{% url 'client:create' %}" style="margin-left:auto">+ Nuevo cliente</a>
+</div>
+
+<div class="card"><div class="table-wrap"><table>
+  <thead><tr><th>Cliente</th><th>Cédula</th><th>Estado</th><th>Teléfono</th><th></th></tr></thead>
+  <tbody>
+  {% for c in clients %}
+    <tr>
+      <td><a href="{% url 'client:detail' c.pk %}"><b>{{ c.full_name }}</b></a></td>
+      <td>{{ c.id_card }}</td>
+      <td><span class="badge {{ c.status|lower }}">{{ c.get_status_display }}</span></td>
+      <td>{{ c.phone|default:"—" }}</td>
+      <td style="text-align:right"><a href="{% url 'client:detail' c.pk %}">Ver</a> · <a href="{% url 'client:update' c.pk %}">Editar</a> · <a href="{% url 'client:delete' c.pk %}">Eliminar</a></td>
+    </tr>
+  {% empty %}<tr><td colspan="5" style="text-align:center;color:var(--muted)">Sin clientes.</td></tr>{% endfor %}
+  </tbody>
+</table></div></div>
+
+{% if show_form %}
+<div class="modal-overlay" data-close="{% url 'client:list' %}">
+  <div class="modal" role="dialog">
+    <h3 class="modal-title">{% if object %}Editar cliente{% else %}Nuevo cliente{% endif %}</h3>
+    <form method="post">{% csrf_token %}
+      <div class="modal-body">
+        {% if form.non_field_errors %}<div class="msg error">{{ form.non_field_errors }}</div>{% endif %}
+        {% for field in form %}
+          <div class="field"><label>{{ field.label }}</label>{% render_field field class="input" %}
+            {% for e in field.errors %}<div class="msg error">{{ e }}</div>{% endfor %}</div>
+        {% endfor %}
+      </div>
+      <div class="modal-actions">
+        {% if object %}<a class="btn btn-danger" href="{% url 'client:delete' object.pk %}">Eliminar</a>{% endif %}
+        <a class="btn btn-ghost" href="{% url 'client:list' %}">Cancelar</a>
+        <button class="btn btn-primary">Guardar</button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endif %}
+
+{% if show_delete %}
+<div class="modal-overlay" data-close="{% url 'client:list' %}">
+  <div class="modal" role="dialog">
+    <h3 class="modal-title">Eliminar cliente</h3>
+    <div class="modal-body"><p>¿Eliminar a <b>{{ object.full_name }}</b>? Se borran sus membresías, pagos y asistencias.</p></div>
+    <form method="post">{% csrf_token %}
+      <div class="modal-actions">
+        <a class="btn btn-ghost" href="{% url 'client:list' %}">Cancelar</a>
+        <button class="btn btn-danger">Sí, eliminar</button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endif %}
+{% endblock %}

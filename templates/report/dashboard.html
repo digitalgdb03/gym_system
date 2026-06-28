@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+{% load gym_extras %}
+{% block page_title %}Dashboard{% endblock %}
+{% block page_sub %}Resumen del día{% endblock %}
+{% block content %}
+
+<div class="grid cols-2" style="margin-bottom:20px">
+  <div class="card stat"><div class="label">Ingresos de hoy</div><div class="value">${{ income|floatformat:0 }}</div><div class="substat">Bs {{ income|bs }}</div></div>
+  <div class="card stat"><div class="label">En el gimnasio ahora</div><div class="value">{{ inside }}</div><div class="substat">clientes presentes</div></div>
+  <div class="card stat"><div class="label">Clientes activos</div><div class="value">{{ active }}</div><div class="substat">de {{ active|add:overdue|add:frozen }} totales</div></div>
+  <div class="card stat"><div class="label">Morosos</div><div class="value">{{ overdue }}</div><div class="substat">requieren seguimiento</div></div>
+</div>
+
+<div class="grid cols-2">
+  <div class="card"><h3>Asistencia por hora</h3>
+    <div class="bars">
+      {% for h in hourly %}<div class="bar {% if h.label == '6p' %}peak{% endif %}"><div class="val">{{ h.val }}</div><div class="col" style="height:{{ h.pct }}%"></div><div class="lbl">{{ h.label }}</div></div>
+      {% empty %}<div class="section-note">Sin asistencias hoy.</div>{% endfor %}
+    </div>
+    <div class="section-note" style="margin-top:14px">Horario top: <b>{{ top_block }}</b> · Servicio top: <b>{{ top_service }}</b></div>
+  </div>
+
+  <div class="card"><h3>Estado de clientes</h3>
+    <div class="donut-wrap"><div class="donut">
+      <div style="width:100%;height:100%;border-radius:50%;background:conic-gradient(var(--ok) 0 {{ pct_active }}%, var(--err) {{ pct_active }}% {{ pct_active_overdue }}%, var(--info) {{ pct_active_overdue }}% 100%);-webkit-mask:radial-gradient(circle 44px at center, transparent 98%, #000 100%);mask:radial-gradient(circle 44px at center, transparent 98%, #000 100%)"></div>
+      <div class="center"><b>{{ pct_active }}%</b><span>activos</span></div></div>
+      <div class="legend">
+        <div class="li"><span class="sw" style="background:var(--ok)"></span>Activos<b>{{ active }}</b></div>
+        <div class="li"><span class="sw" style="background:var(--err)"></span>Morosos<b>{{ overdue }}</b></div>
+        <div class="li"><span class="sw" style="background:var(--info)"></span>Congelados<b>{{ frozen }}</b></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="card" style="margin-top:20px"><h3>Últimos pagos</h3><div class="table-wrap"><table>
+  <thead><tr><th>Cliente</th><th>Plan</th><th>Monto</th><th>Método</th><th>Hora</th></tr></thead>
+  <tbody>
+  {% for p in latest_payments %}
+    <tr><td><b>{{ p.client.full_name }}</b></td><td>{{ p.plan.label }}</td>
+      <td><span class="usd">${{ p.amount_usd }}</span><div class="bs">Bs {{ p.amount_usd|bs }}</div></td>
+      <td>{{ p.get_method_display }}</td><td>{{ p.created_at|date:"g:i A" }}</td></tr>
+  {% empty %}<tr><td colspan="5" style="text-align:center">Sin pagos hoy.</td></tr>{% endfor %}
+  </tbody>
+</table></div></div>
+{% endblock %}

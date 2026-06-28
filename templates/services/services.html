@@ -1,0 +1,65 @@
+{% extends "base.html" %}
+{% load widget_tweaks %}
+{% block page_title %}Servicios{% endblock %}
+{% block page_sub %}Áreas que ofrece el gimnasio{% endblock %}
+{% block content %}
+
+<div class="toolbar">
+  <div class="section-note" style="margin:0">Áreas dinámicas: agrega las que ofrezca el gimnasio.</div>
+  <a class="btn btn-primary" href="{% url 'services:create' %}" style="margin-left:auto">+ Nueva área</a>
+</div>
+
+<div class="card"><div class="table-wrap"><table>
+  <thead><tr><th>Área de servicio</th><th>Tipo</th><th>Planes</th><th></th></tr></thead>
+  <tbody>
+  {% for s in services %}
+    <tr>
+      <td><span class="serv-color" style="background:{{ s.color }}"></span><b>{{ s.name }}</b></td>
+      <td>{{ s.get_kind_display }}</td>
+      <td>{{ s.plans.count }}</td>
+      <td style="text-align:right">
+        <a href="{% url 'services:update' s.pk %}">Editar</a> ·
+        <a href="{% url 'services:delete' s.pk %}">Eliminar</a>
+      </td>
+    </tr>
+  {% empty %}<tr><td colspan="4" style="text-align:center;color:var(--muted)">Sin áreas.</td></tr>{% endfor %}
+  </tbody>
+</table></div></div>
+
+{% if show_form %}
+<div class="modal-overlay" data-close="{% url 'services:list' %}">
+  <div class="modal" role="dialog">
+    <h3 class="modal-title">{% if object %}Editar área{% else %}Nueva área{% endif %}</h3>
+    <form method="post">{% csrf_token %}
+      <div class="modal-body">
+        {% if form.non_field_errors %}<div class="msg error">{{ form.non_field_errors }}</div>{% endif %}
+        {% for field in form %}
+          <div class="field"><label>{{ field.label }}</label>{% render_field field class="input" %}
+            {% for e in field.errors %}<div class="msg error">{{ e }}</div>{% endfor %}</div>
+        {% endfor %}
+      </div>
+      <div class="modal-actions">
+        {% if object %}<a class="btn btn-danger" href="{% url 'services:delete' object.pk %}">Eliminar</a>{% endif %}
+        <a class="btn btn-ghost" href="{% url 'services:list' %}">Cancelar</a>
+        <button class="btn btn-primary">Guardar</button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endif %}
+
+{% if show_delete %}
+<div class="modal-overlay" data-close="{% url 'services:list' %}">
+  <div class="modal" role="dialog">
+    <h3 class="modal-title">Eliminar área</h3>
+    <div class="modal-body"><p>¿Eliminar <b>{{ object.name }}</b>?</p></div>
+    <form method="post">{% csrf_token %}
+      <div class="modal-actions">
+        <a class="btn btn-ghost" href="{% url 'services:list' %}">Cancelar</a>
+        <button class="btn btn-danger">Sí, eliminar</button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endif %}
+{% endblock %}

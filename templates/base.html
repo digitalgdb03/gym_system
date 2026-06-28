@@ -13,16 +13,23 @@
     <aside class="sidebar">
       <div class="brand">
         <img src="{% static 'images/zona_gym.png' %}" alt="" class="brand-logo">
-        <div><h1>{{ gym.nombre|default:"Zona Gym" }}</h1><small>Gestión</small></div>
+        <div><h1>{{ gym.name|default:"Zona Gym" }}</h1><small>Gestión</small></div>
       </div>
       <div class="nav-label">Principal</div>
       <nav class="nav">
         <a href="{% url 'report:dashboard' %}">Dashboard</a>
+        <a href="{% url 'user:list' %}">Usuarios</a>
+        <a href="{% url 'client:list' %}">Clientes</a>
+        <a href="{% url 'attendance:list' %}">Asistencia</a>
         <a href="{% url 'services:list' %}">Servicios</a>
-        {# Cada módulo nuevo agrega su <a> aquí #}
+        <a href="{% url 'plans:list' %}">Planes</a>
+        <a href="{% url 'schedules:calendar' %}">Horarios</a>
+        <a href="{% url 'payments:list' %}">Pagos</a>
+        <a href="{% url 'report:reports' %}">Reportes</a>
+        <a href="{% url 'configuration:edit' %}">Configuración</a>
       </nav>
       <div class="footer">
-        <div>{{ gym.nombre|default:"Zona Gym" }} · Panel</div>
+        <div>{{ gym.name|default:"Zona Gym" }} · Panel</div>
         {% if user.is_authenticated %}
           <form method="post" action="{% url 'user:logout' %}">{% csrf_token %}
             <button class="reset-btn" type="submit" style="margin-top:10px">Cerrar sesión</button>
@@ -40,7 +47,7 @@
         <div class="rate-box">
           <div class="rate-inner">
             <span class="rate-label"><span class="dot"></span> Tasa BCV</span>
-            <span class="rate-val"><b>{{ gym.bcv|default:"—" }}</b> <small>Bs/USD</small></span>
+            <span class="rate-val"><b>{{ gym.bcv_rate|default:"—" }}</b> <small>Bs/USD</small></span>
           </div>
         </div>
       </header>
@@ -53,6 +60,13 @@
       </section>
     </main>
   </div>
+
   {% block scripts %}{% endblock %}
+  <script>
+    document.addEventListener("click", function (e) {
+      var ov = e.target.closest(".modal-overlay");
+      if (ov && e.target === ov && ov.dataset.close) location.href = ov.dataset.close;
+    });
+  </script>
 </body>
 </html>

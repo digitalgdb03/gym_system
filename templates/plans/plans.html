@@ -1,0 +1,71 @@
+{% extends "base.html" %}
+{% load widget_tweaks gym_extras %}
+{% block page_title %}Planes{% endblock %}
+{% block page_sub %}Tarifas por área y duración{% endblock %}
+{% block content %}
+
+<div class="toolbar">
+  <div class="section-note" style="margin:0">Cada plan pertenece a un área y una duración.</div>
+  <a class="btn btn-primary" href="{% url 'plans:create' %}" style="margin-left:auto">+ Nuevo plan</a>
+</div>
+
+{% for s in areas %}
+<div class="plan-area fade-in">
+  <div class="head"><span class="tag">{{ s.name }}</span>
+    <span class="chip-area" style="background:{{ s.color }}">Área de servicio</span></div>
+  <div class="plan-cards">
+    {% for p in s.plans.all %}
+    <div class="plan">
+      <div class="plan-acts">
+        <a class="icon-btn" href="{% url 'plans:update' p.pk %}">✎</a>
+        <a class="icon-btn del" href="{% url 'plans:delete' p.pk %}">🗑</a>
+      </div>
+      <div class="dur">{{ p.name|default:p.get_duration_display }}{% if p.is_custom %} · pers.{% endif %}</div>
+      <div class="price"><small>$</small>{{ p.price_bcv }}<span class="price-tag">BCV</span></div>
+      <div class="price-bs">≈ Bs {{ p.price_bcv|bs }}</div>
+      <div class="price2"><b>${{ p.price_cash }}</b> divisas <span>· Bs {{ p.price_cash|bs }}</span></div>
+      <div class="feat">{% if p.name %}Incluye: {% for a in p.included_services.all %}{{ a.name }}{% if not forloop.last %} + {% endif %}{% endfor %}{% else %}Acceso a {{ s.name }}{% endif %}</div>
+    </div>
+    {% empty %}<div class="section-note">Sin planes en esta área.</div>{% endfor %}
+  </div>
+</div>
+{% endfor %}
+
+{% if show_form %}
+<div class="modal-overlay" data-close="{% url 'plans:list' %}">
+  <div class="modal" role="dialog">
+    <h3 class="modal-title">{% if object %}Editar plan{% else %}Nuevo plan{% endif %}</h3>
+    <form method="post">{% csrf_token %}
+      <div class="modal-body">
+        {% if form.non_field_errors %}<div class="msg error">{{ form.non_field_errors }}</div>{% endif %}
+        {% for field in form %}
+          <div class="field"><label>{{ field.label }}</label>{% render_field field class="input" %}
+            {% if field.help_text %}<div class="field-hint">{{ field.help_text }}</div>{% endif %}
+            {% for e in field.errors %}<div class="msg error">{{ e }}</div>{% endfor %}</div>
+        {% endfor %}
+      </div>
+      <div class="modal-actions">
+        {% if object %}<a class="btn btn-danger" href="{% url 'plans:delete' object.pk %}">Eliminar</a>{% endif %}
+        <a class="btn btn-ghost" href="{% url 'plans:list' %}">Cancelar</a>
+        <button class="btn btn-primary">Guardar</button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endif %}
+
+{% if show_delete %}
+<div class="modal-overlay" data-close="{% url 'plans:list' %}">
+  <div class="modal" role="dialog">
+    <h3 class="modal-title">Eliminar plan</h3>
+    <div class="modal-body"><p>¿Eliminar el plan <b>{{ object.label }}</b>?</p></div>
+    <form method="post">{% csrf_token %}
+      <div class="modal-actions">
+        <a class="btn btn-ghost" href="{% url 'plans:list' %}">Cancelar</a>
+        <button class="btn btn-danger">Sí, eliminar</button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endif %}
+{% endblock %}

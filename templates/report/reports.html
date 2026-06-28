@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+{% load gym_extras %}
+{% block page_title %}Reportes{% endblock %}
+{% block page_sub %}Ingresos por día, semana y mes{% endblock %}
+{% block content %}
+
+<div class="print-header"><div><b>Zona Gym</b><span>Reporte de ingresos · {{ chart_title }}</span></div></div>
+
+<div class="toolbar">
+  <div class="pills">
+    <a class="pill {% if period == 'day' %}active{% endif %}" href="?period=day">Día</a>
+    <a class="pill {% if period == 'week' %}active{% endif %}" href="?period=week">Semana</a>
+    <a class="pill {% if period == 'month' %}active{% endif %}" href="?period=month">Mes</a>
+  </div>
+  <button class="btn btn-primary" style="margin-left:auto" onclick="window.print()">⤓ Descargar PDF</button>
+</div>
+
+<div class="grid cols-3" style="margin-bottom:20px">
+  <div class="card stat"><div class="label">Total recaudado</div><div class="value">${{ total|floatformat:0 }}</div><div class="substat">Bs {{ total|bs }}</div></div>
+  <div class="card stat"><div class="label">Pagos</div><div class="value">{{ count }}</div><div class="substat">en el período</div></div>
+  <div class="card stat"><div class="label">Ticket promedio</div><div class="value">${{ avg|floatformat:1 }}</div><div class="substat">por pago</div></div>
+</div>
+
+<div class="card"><h3>{{ chart_title }}</h3>
+  <div class="bars">
+    {% for s in serie %}<div class="bar {% if s.pct == 100 %}peak{% endif %}"><div class="val">${{ s.val|floatformat:0 }}</div><div class="col" style="height:{{ s.pct }}%"></div><div class="lbl">{{ s.label }}</div></div>{% endfor %}
+  </div>
+</div>
+
+<div class="rep-break">
+  <div class="card"><h3>Por método de pago</h3><div class="table-wrap"><table>
+    <thead><tr><th>Concepto</th><th>Pagos</th><th>Total</th></tr></thead>
+    <tbody>{% for r in by_method %}<tr><td>{{ r.label }}</td><td>{{ r.count }}</td><td><span class="usd">${{ r.total|floatformat:2 }}</span><div class="bs">Bs {{ r.total|bs }}</div></td></tr>{% empty %}<tr><td colspan="3" style="text-align:center">Sin datos.</td></tr>{% endfor %}</tbody>
+  </table></div></div>
+  <div class="card"><h3>Por área</h3><div class="table-wrap"><table>
+    <thead><tr><th>Concepto</th><th>Pagos</th><th>Total</th></tr></thead>
+    <tbody>{% for r in by_area %}<tr><td>{{ r.label }}</td><td>{{ r.count }}</td><td><span class="usd">${{ r.total|floatformat:2 }}</span><div class="bs">Bs {{ r.total|bs }}</div></td></tr>{% empty %}<tr><td colspan="3" style="text-align:center">Sin datos.</td></tr>{% endfor %}</tbody>
+  </table></div></div>
+</div>
+{% endblock %}

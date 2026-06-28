@@ -1,0 +1,70 @@
+{% extends "base.html" %}
+{% load widget_tweaks gym_extras %}
+{% block page_title %}Pagos{% endblock %}
+{% block page_sub %}Movimientos del día{% endblock %}
+{% block content %}
+
+<div class="toolbar">
+  <div class="section-note" style="margin:0">Registra pagos asociados a un cliente y su plan.</div>
+  <a class="btn btn-primary" href="{% url 'payments:create' %}" style="margin-left:auto">+ Registrar pago</a>
+</div>
+
+<div class="grid cols-3" style="margin-bottom:20px">
+  <div class="card stat"><div class="label">Total recaudado hoy</div><div class="value">${{ total|floatformat:0 }}</div><div class="substat">Bs {{ total|bs }}</div></div>
+  <div class="card stat"><div class="label">Pagos procesados</div><div class="value">{{ count }}</div><div class="substat">transacciones</div></div>
+  <div class="card stat"><div class="label">Ticket promedio</div><div class="value">${{ avg|floatformat:1 }}</div><div class="substat">por pago</div></div>
+</div>
+
+<div class="card"><h3>Movimientos de hoy</h3><div class="table-wrap"><table>
+  <thead><tr><th>Cliente</th><th>Plan</th><th>Monto</th><th>Método</th><th>Hora</th><th></th></tr></thead>
+  <tbody>
+  {% for p in payments %}
+    <tr>
+      <td><b>{{ p.client.full_name }}</b></td><td>{{ p.plan.label }}</td>
+      <td><span class="usd">${{ p.amount_usd }}</span><div class="bs">Bs {{ p.amount_usd|bs }}</div></td>
+      <td>{{ p.get_method_display }} <span class="mon-tag {% if p.currency == 'CASH' %}div{% else %}bcv{% endif %}">{{ p.get_currency_display }}</span></td>
+      <td>{{ p.created_at|date:"g:i A" }}</td>
+      <td style="text-align:right"><a href="{% url 'payments:update' p.pk %}">Editar</a> · <a href="{% url 'payments:delete' p.pk %}">Eliminar</a></td>
+    </tr>
+  {% empty %}<tr><td colspan="6" style="text-align:center;color:var(--muted)">Sin pagos hoy.</td></tr>{% endfor %}
+  </tbody>
+</table></div></div>
+
+{% if show_form %}
+<div class="modal-overlay" data-close="{% url 'payments:list' %}">
+  <div class="modal" role="dialog">
+    <h3 class="modal-title">{% if object %}Editar pago{% else %}Registrar pago{% endif %}</h3>
+    <form method="post">{% csrf_token %}
+      <div class="modal-body">
+        {% if form.non_field_errors %}<div class="msg error">{{ form.non_field_errors }}</div>{% endif %}
+        {% for field in form %}
+          <div class="field"><label>{{ field.label }}</label>{% render_field field class="input" %}
+            {% if field.help_text %}<div class="field-hint">{{ field.help_text }}</div>{% endif %}
+            {% for e in field.errors %}<div class="msg error">{{ e }}</div>{% endfor %}</div>
+        {% endfor %}
+      </div>
+      <div class="modal-actions">
+        {% if object %}<a class="btn btn-danger" href="{% url 'payments:delete' object.pk %}">Eliminar</a>{% endif %}
+        <a class="btn btn-ghost" href="{% url 'payments:list' %}">Cancelar</a>
+        <button class="btn btn-primary">Guardar</button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endif %}
+
+{% if show_delete %}
+<div class="modal-overlay" data-close="{% url 'payments:list' %}">
+  <div class="modal" role="dialog">
+    <h3 class="modal-title">Eliminar pago</h3>
+    <div class="modal-body"><p>¿Eliminar el pago de <b>{{ object.client.full_name }}</b> por <b>${{ object.amount_usd }}</b>?</p></div>
+    <form method="post">{% csrf_token %}
+      <div class="modal-actions">
+        <a class="btn btn-ghost" href="{% url 'payments:list' %}">Cancelar</a>
+        <button class="btn btn-danger">Sí, eliminar</button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endif %}
+{% endblock %}

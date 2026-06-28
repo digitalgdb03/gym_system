@@ -4,4 +4,4 @@ from .models import GymConfig
 
 @admin.register(GymConfig)
 class GymConfigAdmin(admin.ModelAdmin):
-    list_display = ("nombre", "bcv")
+    list_display = ("name", "bcv_rate")
