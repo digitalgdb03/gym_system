@@ -1,0 +1,19 @@
+# --- Núcleo ---
+Django>=5.0,<5.2
+django-environ>=0.11          # variables de entorno (.env) para SECRET_KEY, DB, etc.
+
+# --- Base de datos ---
+psycopg2-binary>=2.9          # PostgreSQL (en dev puedes usar SQLite sin esto)
+
+# --- Imágenes (logo, fotos de clientes si las agregas) ---
+Pillow>=10.0
+
+# --- Formularios en plantillas ---
+django-widget-tweaks>=1.5     # control fino de inputs en el HTML
+
+# --- Estáticos / despliegue ---
+whitenoise>=6.6               # servir CSS/JS en producción
+gunicorn>=21.2                # servidor WSGI para producción
+
+# --- Utilidades de fechas (vencimientos, congelaciones) ---
+python-dateutil>=2.9
