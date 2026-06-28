@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% block title %}Servicios · Zona Gym{% endblock %}
+{% block page_title %}Servicios{% endblock %}
+{% block page_sub %}Áreas del gimnasio{% endblock %}
+
+{% block content %}
+<div style="display:flex;justify-content:flex-end;margin-bottom:14px">
+  <a class="btn btn-primary" href="{% url 'services:create' %}">+ Nuevo servicio</a>
+</div>
+
+<table class="table">
+  <thead>
+    <tr><th>Servicio</th><th>Tipo</th><th>Estado</th><th></th></tr>
+  </thead>
+  <tbody>
+    {% for s in servicios %}
+    <tr>
+      <td>
+        <span style="display:inline-block;width:12px;height:12px;border-radius:3px;
+                     background:{{ s.color }};margin-right:8px"></span>
+        {{ s.nombre }}
+      </td>
+      <td>{{ s.get_tipo_display }}</td>
+      <td>{% if s.activo %}Activo{% else %}Inactivo{% endif %}</td>
+      <td style="text-align:right">
+        <a href="{% url 'services:update' s.pk %}">Editar</a> ·
+        <a href="{% url 'services:delete' s.pk %}">Eliminar</a>
+      </td>
+    </tr>
+    {% empty %}
+    <tr><td colspan="4">No hay servicios cargados todavía.</td></tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endblock %}
