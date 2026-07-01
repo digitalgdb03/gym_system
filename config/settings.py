@@ -65,22 +65,22 @@ WSGI_APPLICATION = "config.wsgi.application"
 
 DATABASES = {
     # "default": env.db("DATABASE_URL", default=f"sqlite:///{BASE_DIR / 'db.sqlite3'}")
-    # 'default': {
-    #     'ENGINE': 'django.db.backends.postgresql',
-    #     'NAME': env('DB_NAME', default='gym_system'),
-    #     'USER': env('DB_USER', default='postgres'),
-    #     'PASSWORD': env('DB_PASSWORD', default='postgres'),
-    #     'HOST': env('DB_HOST', default='localhost'),
-    #     'PORT': env('DB_PORT', default='5432'),
-    # }
-    "default": {
-        "ENGINE": "django.db.backends.postgresql",
-        "NAME": "gym_system",
-        "USER": "postgres",
-        "PASSWORD": "23833426",
-        "HOST": "localhost",
-        "PORT": "5432",
+    'default': {
+        'ENGINE': 'django.db.backends.postgresql',
+        'NAME': env('DB_NAME', default='gym_system'),
+        'USER': env('DB_USER', default='postgres'),
+        'PASSWORD': env('DB_PASSWORD', default='postgres'),
+        'HOST': env('DB_HOST', default='localhost'),
+        'PORT': env('DB_PORT', default='5432'),
     }
+    # "default": {
+    #     "ENGINE": "django.db.backends.postgresql",
+    #     "NAME": "gym_system",
+    #     "USER": "postgres",
+    #     "PASSWORD": "23833426",
+    #     "HOST": "localhost",
+    #     "PORT": "5432",
+    # }
 }
 
 AUTH_USER_MODEL = "user.User"

@@ -9,7 +9,8 @@
   <link rel="stylesheet" href="{% static 'css/styles.css' %}">
 </head>
 <body>
-  <div class="app">
+  <div class="app menu-open" id="appRoot">
+    <div class="backdrop" id="backdrop"></div>
     <aside class="sidebar">
       <div class="brand">
         <img src="{% static 'images/zona_gym.png' %}" alt="" class="brand-logo">
@@ -40,6 +41,9 @@
 
     <main class="main">
       <header class="topbar">
+        <button class="menu-toggle" id="menuToggle" aria-label="Mostrar u ocultar menú">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 6h18M3 12h18M3 18h18"/></svg>
+        </button>
         <div class="title">
           <h2>{% block page_title %}Dashboard{% endblock %}</h2>
           <div class="sub">{% block page_sub %}{% endblock %}</div>
@@ -63,10 +67,19 @@
 
   {% block scripts %}{% endblock %}
   <script>
+    // Cerrar modales al tocar el fondo
     document.addEventListener("click", function (e) {
       var ov = e.target.closest(".modal-overlay");
       if (ov && e.target === ov && ov.dataset.close) location.href = ov.dataset.close;
     });
+    // Menú lateral (abrir/cerrar)
+    (function () {
+      var root = document.getElementById("appRoot");
+      var toggle = document.getElementById("menuToggle");
+      var backdrop = document.getElementById("backdrop");
+      if (toggle) toggle.addEventListener("click", function () { root.classList.toggle("menu-open"); });
+      if (backdrop) backdrop.addEventListener("click", function () { root.classList.remove("menu-open"); });
+    })();
   </script>
 </body>
 </html>
