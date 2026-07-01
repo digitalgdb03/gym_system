@@ -4,20 +4,56 @@
 {% block page_sub %}Resumen del día{% endblock %}
 {% block content %}
 
-<div class="grid cols-2" style="margin-bottom:20px">
-  <div class="card stat"><div class="label">Ingresos de hoy</div><div class="value">${{ income|floatformat:0 }}</div><div class="substat">Bs {{ income|bs }}</div></div>
-  <div class="card stat"><div class="label">En el gimnasio ahora</div><div class="value">{{ inside }}</div><div class="substat">clientes presentes</div></div>
-  <div class="card stat"><div class="label">Clientes activos</div><div class="value">{{ active }}</div><div class="substat">de {{ active|add:overdue|add:frozen }} totales</div></div>
-  <div class="card stat"><div class="label">Morosos</div><div class="value">{{ overdue }}</div><div class="substat">requieren seguimiento</div></div>
+<!-- Fila superior: 4 tarjetas (2x2) + tarjeta grande de la Tasa BCV -->
+<div style="display:flex; gap:20px; align-items:stretch; flex-wrap:wrap;">
+  <div class="grid cols-2 dashboard-stats" style="flex:1; margin:0; display:grid; grid-template-rows:1fr 1fr; gap:20px;">
+
+    <div class="card stat">
+      <div class="ico tint-y"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20"/></svg></div>
+      <div class="label">Ingresos de hoy</div>
+      <div class="value">${{ income|floatformat:0 }}</div>
+      <div class="substat">Bs {{ income|bs }}</div>
+    </div>
+
+    <div class="card stat">
+      <div class="ico tint-o"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg></div>
+      <div class="label">En el gimnasio ahora</div>
+      <div class="value">{{ inside }}</div>
+      <div class="substat">clientes presentes</div>
+    </div>
+
+    <div class="card stat">
+      <div class="ico tint-b"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></div>
+      <div class="label">Clientes activos</div>
+      <div class="value">{{ active }}</div>
+      <div class="substat">de {{ active|add:overdue|add:frozen }} totales</div>
+    </div>
+
+    <div class="card stat">
+      <div class="ico tint-c"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.59 13.41 13.42 20.6a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><circle cx="7" cy="7" r="1.5"/></svg></div>
+      <div class="label">Morosos</div>
+      <div class="value">{{ overdue }}</div>
+      <div class="substat">requieren seguimiento</div>
+    </div>
+
+  </div>
+
+  <div class="tasa-bcv-card" style="flex:0 0 320px; margin:0; min-height:100%; max-width:none; justify-content:center; text-align:center;">
+    <div class="tasa-bcv-card-content" style="text-align:center;">
+      <h3>Tasa del Día</h3>
+      <div class="val">{{ gym.bcv_rate|default:"—" }} <small>Bs</small></div>
+    </div>
+  </div>
 </div>
 
-<div class="grid cols-2">
+<!-- Asistencia por hora + Estado de clientes -->
+<div class="grid cols-2" style="margin-top:20px">
   <div class="card"><h3>Asistencia por hora</h3>
     <div class="bars">
       {% for h in hourly %}<div class="bar {% if h.label == '6p' %}peak{% endif %}"><div class="val">{{ h.val }}</div><div class="col" style="height:{{ h.pct }}%"></div><div class="lbl">{{ h.label }}</div></div>
       {% empty %}<div class="section-note">Sin asistencias hoy.</div>{% endfor %}
     </div>
-    <div class="section-note" style="margin-top:14px">Horario top: <b>{{ top_block }}</b> · Servicio top: <b>{{ top_service }}</b></div>
+    <div class="section-note" style="margin-top:14px">Horario más concurrido: <b style="color:var(--azul)">{{ top_block }}</b> · Servicio top: <b style="color:var(--azul)">{{ top_service }}</b></div>
   </div>
 
   <div class="card"><h3>Estado de clientes</h3>
@@ -33,14 +69,29 @@
   </div>
 </div>
 
-<div class="card" style="margin-top:20px"><h3>Últimos pagos</h3><div class="table-wrap"><table>
-  <thead><tr><th>Cliente</th><th>Plan</th><th>Monto</th><th>Método</th><th>Hora</th></tr></thead>
-  <tbody>
-  {% for p in latest_payments %}
-    <tr><td><b>{{ p.client.full_name }}</b></td><td>{{ p.plan.label }}</td>
-      <td><span class="usd">${{ p.amount_usd }}</span><div class="bs">Bs {{ p.amount_usd|bs }}</div></td>
-      <td>{{ p.get_method_display }}</td><td>{{ p.created_at|date:"g:i A" }}</td></tr>
-  {% empty %}<tr><td colspan="5" style="text-align:center">Sin pagos hoy.</td></tr>{% endfor %}
-  </tbody>
-</table></div></div>
+<!-- Últimos pagos (con avatar de iniciales y etiqueta de moneda) -->
+<div class="card" style="margin-top:20px"><h3>Últimos pagos</h3>
+  <div class="table-wrap"><table>
+    <thead><tr><th>Cliente</th><th>Plan</th><th>Monto</th><th>Método</th><th>Hora</th></tr></thead>
+    <tbody>
+    {% for p in latest_payments %}
+      <tr>
+        <td data-label="Cliente">
+          <div class="cell-name">
+            <div class="av {% cycle '' 'o' 'n' %}">{{ p.client.full_name|initials }}</div>
+            <b>{{ p.client.full_name }}</b>
+          </div>
+        </td>
+        <td data-label="Plan">{{ p.plan.label }}</td>
+        <td data-label="Monto"><span class="usd">${{ p.amount_usd }}</span><div class="bs">Bs {{ p.amount_usd|bs }}</div></td>
+        <td data-label="Método">{{ p.get_method_display }}
+          <span class="mon-tag {% if p.currency == 'CASH' %}div{% else %}bcv{% endif %}">{% if p.currency == 'CASH' %}Divisas{% else %}BCV{% endif %}</span></td>
+        <td data-label="Hora">{{ p.created_at|date:"g:i A" }}</td>
+      </tr>
+    {% empty %}
+      <tr><td colspan="5" style="text-align:center;color:var(--muted)">Sin pagos hoy.</td></tr>
+    {% endfor %}
+    </tbody>
+  </table></div>
+</div>
 {% endblock %}

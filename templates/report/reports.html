@@ -16,9 +16,18 @@
 </div>
 
 <div class="grid cols-3" style="margin-bottom:20px">
-  <div class="card stat"><div class="label">Total recaudado</div><div class="value">${{ total|floatformat:0 }}</div><div class="substat">Bs {{ total|bs }}</div></div>
-  <div class="card stat"><div class="label">Pagos</div><div class="value">{{ count }}</div><div class="substat">en el período</div></div>
-  <div class="card stat"><div class="label">Ticket promedio</div><div class="value">${{ avg|floatformat:1 }}</div><div class="substat">por pago</div></div>
+  <div class="card stat">
+    <div class="ico tint-y"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20"/></svg></div>
+    <div class="label">Total recaudado</div><div class="value">${{ total|floatformat:0 }}</div><div class="substat">Bs {{ total|bs }}</div>
+  </div>
+  <div class="card stat">
+    <div class="ico tint-b"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 13h8V3H3zM13 21h8V11h-8zM13 3v6h8V3zM3 21h8v-6H3z"/></svg></div>
+    <div class="label">Pagos</div><div class="value">{{ count }}</div><div class="substat">en el período</div>
+  </div>
+  <div class="card stat">
+    <div class="ico tint-c"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.59 13.41 13.42 20.6a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><circle cx="7" cy="7" r="1.5"/></svg></div>
+    <div class="label">Ticket promedio</div><div class="value">${{ avg|floatformat:1 }}</div><div class="substat">por pago</div>
+  </div>
 </div>
 
 <div class="card"><h3>{{ chart_title }}</h3>

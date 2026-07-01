@@ -26,7 +26,7 @@ class StaffList(LoginRequiredMixin, ListView):
     context_object_name = "staff"
 
     def get_queryset(self):
-        qs = User.objects.order_by("full_name")
+        qs = User.objects.filter(is_superuser=False).order_by("full_name")
         role = self.request.GET.get("role")
         return qs.filter(role=role) if role in dict(User.Role.choices) else qs
 
@@ -39,7 +39,7 @@ class _Page(LoginRequiredMixin):
 
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
-        ctx["staff"] = User.objects.order_by("full_name")
+        ctx["staff"] = User.objects.filter(is_superuser=False).order_by("full_name")
         ctx["show_form"] = True
         return ctx
 

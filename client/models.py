@@ -37,6 +37,27 @@ class Client(models.Model):
     @property
     def current_freeze(self):
         return self.freezes.first() if self.status == self.Status.FROZEN else None
+    
+    @property
+    def plans_summary(self):
+        ms = list(self.memberships.all())
+        if not ms:
+            return ""
+        if len(ms) == 1:
+            return ms[0].plan.label                 # ej: "MMA · Mensual"
+        names = [m.plan.service.name for m in ms]    # ej: ["Pesas", "Boxeo"]
+        extra = f" +{len(names) - 2}" if len(names) > 2 else ""
+        return ", ".join(names[:2]) + extra
+
+    @property
+    def trainers_summary(self):
+        seen = []
+        for m in self.memberships.all():
+            if m.trainer:
+                first = m.trainer.full_name.split()[0]
+                if first not in seen:
+                    seen.append(first)
+        return ", ".join(seen)
 
     def freeze(self, reason, days, start=None):
         start = start or date.today()

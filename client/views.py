@@ -19,7 +19,9 @@ class ClientList(LoginRequiredMixin, ListView):
 
     def get_queryset(self):
         q = self.request.GET.get("q")
-        qs = Client.objects.all()
+        qs = Client.objects.prefetch_related(
+            "memberships__plan__service", "memberships__trainer"
+        )
         return qs.filter(Q(full_name__icontains=q) | Q(id_card__icontains=q)) if q else qs
 
 

@@ -1,4 +1,4 @@
-{% load static %}
+{% load static gym_extras %}
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -7,6 +7,32 @@
   <title>{% block title %}Zona Gym{% endblock %}</title>
   <link rel="icon" href="{% static 'images/zona_gym.png' %}">
   <link rel="stylesheet" href="{% static 'css/styles.css' %}">
+  <style>
+    /* ================================================================
+       Ajustes que se apoyan en tu styles.css (NO lo reemplazan):
+       - Modo riel: menu minimizado a solo iconos.
+       - Corrige el margen del contenido en riel (tu .main usa margin-left).
+       Tu styles.css ya hace el resto (sidebar fijo, iconos, activo, etc.)
+       ================================================================ */
+    #appRoot.is-rail aside.sidebar{ width:74px !important; padding-left:12px !important; padding-right:12px !important; }
+    #appRoot.is-rail .sidebar .brand-logo{ width:40px !important; height:40px !important; }
+    #appRoot.is-rail .sidebar .brand > div,
+    #appRoot.is-rail .sidebar .nav-label,
+    #appRoot.is-rail #nav button .lbl,
+    #appRoot.is-rail .sidebar .footer{ display:none !important; }
+    #appRoot.is-rail .sidebar .brand{ justify-content:center; padding-bottom:16px; }
+    #appRoot.is-rail #nav button{ justify-content:center; position:relative; padding-left:0; padding-right:0; }
+    #appRoot.is-rail #nav button:hover::after{
+      content:attr(data-title); position:absolute; left:calc(100% + 12px); top:50%;
+      transform:translateY(-50%); background:#1f2440; color:#fff; padding:6px 10px;
+      border-radius:7px; font-size:12px; white-space:nowrap; z-index:120;
+      box-shadow:0 8px 22px rgba(0,0,0,.3);
+    }
+    /* En pantallas anchas, cuando esta en riel, el contenido se pega al riel */
+    @media (min-width:1081px){
+      #appRoot.is-rail.menu-open .main{ margin-left:74px !important; }
+    }
+  </style>
 </head>
 <body>
   <div class="app menu-open" id="appRoot">
@@ -17,31 +43,52 @@
         <div><h1>{{ gym.name|default:"Zona Gym" }}</h1><small>Gestión</small></div>
       </div>
       <div class="nav-label">Principal</div>
-      <nav class="nav">
-        <a href="{% url 'report:dashboard' %}">Dashboard</a>
-        <a href="{% url 'user:list' %}">Usuarios</a>
-        <a href="{% url 'client:list' %}">Clientes</a>
-        <a href="{% url 'attendance:list' %}">Asistencia</a>
-        <a href="{% url 'services:list' %}">Servicios</a>
-        <a href="{% url 'plans:list' %}">Planes</a>
-        <a href="{% url 'schedules:calendar' %}">Horarios</a>
-        <a href="{% url 'payments:list' %}">Pagos</a>
-        <a href="{% url 'report:reports' %}">Reportes</a>
-        <a href="{% url 'configuration:edit' %}">Configuración</a>
+      {% with ns=request.resolver_match.namespace vn=request.resolver_match.view_name %}
+      <nav class="nav" id="nav">
+        <button type="button" data-title="Dashboard" onclick="location.href='{% url 'report:dashboard' %}'" class="{% if vn == 'report:dashboard' %}active{% endif %}">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 13h8V3H3zM13 21h8V11h-8zM13 3v6h8V3zM3 21h8v-6H3z"/></svg>
+          <span class="lbl">Dashboard</span></button>
+
+        <button type="button" data-title="Usuarios" onclick="location.href='{% url 'user:list' %}'" class="{% if ns == 'user' %}active{% endif %}">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+          <span class="lbl">Usuarios</span></button>
+
+        <button type="button" data-title="Clientes" onclick="location.href='{% url 'client:list' %}'" class="{% if ns == 'client' %}active{% endif %}">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+          <span class="lbl">Clientes</span></button>
+
+        <button type="button" data-title="Asistencia" onclick="location.href='{% url 'attendance:list' %}'" class="{% if ns == 'attendance' %}active{% endif %}">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
+          <span class="lbl">Asistencia</span></button>
+
+        <button type="button" data-title="Servicios" onclick="location.href='{% url 'services:list' %}'" class="{% if ns == 'services' %}active{% endif %}">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8v8M18 8v8M3 10v4M21 10v4M6 12h12"/></svg>
+          <span class="lbl">Servicios</span></button>
+
+        <button type="button" data-title="Planes" onclick="location.href='{% url 'plans:list' %}'" class="{% if ns == 'plans' %}active{% endif %}">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.59 13.41 13.42 20.6a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><circle cx="7" cy="7" r="1.5"/></svg>
+          <span class="lbl">Planes</span></button>
+
+        <button type="button" data-title="Horarios" onclick="location.href='{% url 'schedules:calendar' %}'" class="{% if ns == 'schedules' %}active{% endif %}">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
+          <span class="lbl">Horarios</span></button>
+
+        <button type="button" data-title="Pagos" onclick="location.href='{% url 'payments:list' %}'" class="{% if ns == 'payments' %}active{% endif %}">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20"/></svg>
+          <span class="lbl">Pagos</span></button>
+
+        <button type="button" data-title="Reportes" onclick="location.href='{% url 'report:reports' %}'" class="{% if vn == 'report:reports' %}active{% endif %}">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><rect x="7" y="11" width="3" height="6"/><rect x="12" y="7" width="3" height="10"/><rect x="17" y="13" width="3" height="4"/></svg>
+          <span class="lbl">Reportes</span></button>
+
       </nav>
-      <div class="footer">
-        <div>{{ gym.name|default:"Zona Gym" }} · Panel</div>
-        {% if user.is_authenticated %}
-          <form method="post" action="{% url 'user:logout' %}">{% csrf_token %}
-            <button class="reset-btn" type="submit" style="margin-top:10px">Cerrar sesión</button>
-          </form>
-        {% endif %}
-      </div>
+      {% endwith %}
+      <div class="footer">{{ gym.name|default:"Zona Gym" }} · Panel</div>
     </aside>
 
     <main class="main">
       <header class="topbar">
-        <button class="menu-toggle" id="menuToggle" aria-label="Mostrar u ocultar menú">
+        <button class="menu-toggle" id="menuToggle" aria-label="Menú">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 6h18M3 12h18M3 18h18"/></svg>
         </button>
         <div class="title">
@@ -49,11 +96,25 @@
           <div class="sub">{% block page_sub %}{% endblock %}</div>
         </div>
         <div class="rate-box">
+          <div class="rate-bg"></div>
           <div class="rate-inner">
-            <span class="rate-label"><span class="dot"></span> Tasa BCV</span>
+            <span class="rate-label"><span class="dot"></span> <span>Tasa BCV</span></span>
             <span class="rate-val"><b>{{ gym.bcv_rate|default:"—" }}</b> <small>Bs/USD</small></span>
           </div>
         </div>
+
+        {% if user.is_authenticated %}
+        <div class="user-menu">
+          <button class="avatar" id="avatarBtn" title="Cuenta">{{ user.full_name|default:user.username|initials }}</button>
+          <div class="user-dropdown" id="userMenu" style="display:none">
+            <button type="button" onclick="location.href='{% url 'user:update' user.pk %}'">Mi perfil</button>
+            <button type="button" onclick="location.href='{% url 'configuration:edit' %}'">Configuración</button>
+            <form method="post" action="{% url 'user:logout' %}" style="margin:0">{% csrf_token %}
+              <button type="submit" style="width:100%">Cerrar sesión</button>
+            </form>
+          </div>
+        </div>
+        {% endif %}
       </header>
 
       <section class="content">
@@ -72,13 +133,53 @@
       var ov = e.target.closest(".modal-overlay");
       if (ov && e.target === ov && ov.dataset.close) location.href = ov.dataset.close;
     });
-    // Menú lateral (abrir/cerrar)
+
+    // Menu lateral: EXPANDIDO por defecto. Umbrales alineados a tu styles.css
+    // (sidebar overlay <=1080px, contenido con margen >=1081px).
     (function () {
       var root = document.getElementById("appRoot");
       var toggle = document.getElementById("menuToggle");
       var backdrop = document.getElementById("backdrop");
-      if (toggle) toggle.addEventListener("click", function () { root.classList.toggle("menu-open"); });
+      var KEY = "zg_rail_v2";                    // clave nueva: ignora preferencias viejas
+
+      function init() {
+        if (window.innerWidth >= 1081) {
+          root.classList.add("menu-open");
+          root.classList.toggle("is-rail", localStorage.getItem(KEY) === "1");
+        } else {
+          root.classList.remove("menu-open");     // en movil arranca oculto (overlay)
+          root.classList.remove("is-rail");
+        }
+      }
+      init();
+
+      if (toggle) toggle.addEventListener("click", function () {
+        if (window.innerWidth >= 1081) {
+          var rail = root.classList.toggle("is-rail");   // ancho: alterna riel (solo iconos)
+          localStorage.setItem(KEY, rail ? "1" : "0");
+        } else {
+          root.classList.toggle("menu-open");            // movil: muestra/oculta overlay
+        }
+      });
       if (backdrop) backdrop.addEventListener("click", function () { root.classList.remove("menu-open"); });
+      window.addEventListener("resize", init);
+    })();
+
+    // Menu de usuario (perfil / config / cerrar sesion).
+    // Se abre/cierra por display porque tu styles.css fuerza .user-dropdown{display:flex}.
+    (function () {
+      var btn = document.getElementById("avatarBtn");
+      var menu = document.getElementById("userMenu");
+      if (!btn || !menu) return;
+      function open(){ menu.style.display = "flex"; }
+      function close(){ menu.style.display = "none"; }
+      btn.addEventListener("click", function (e) {
+        e.stopPropagation();
+        (menu.style.display === "none" || !menu.style.display) ? open() : close();
+      });
+      document.addEventListener("click", function (e) {
+        if (menu.style.display === "flex" && !menu.contains(e.target) && e.target !== btn) close();
+      });
     })();
   </script>
 </body>

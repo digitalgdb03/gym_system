@@ -26,7 +26,7 @@ def _hour_label(h):
 def _with_pct(serie):
     top = max((s["val"] for s in serie), default=1) or 1
     for s in serie:
-        s["pct"] = float(s["val"]) / float(top) * 100
+        s["pct"] = round(float(s["val"]) / float(top) * 100)   # entero → sin coma decimal
     return serie
 
 

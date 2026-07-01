@@ -636,7 +636,7 @@ tbody tr:hover { background: #fafbfd; }
   left: -30px;
   bottom: -30px;
   width: 65%;
-  background-image: url('assets/logoBCV.png');
+  background-image: url('../images/logoBCV.png');
   background-size: contain;
   background-position: center left;
   background-repeat: no-repeat;

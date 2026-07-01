@@ -5,7 +5,7 @@ from .models import User
 class StaffForm(forms.ModelForm):
     class Meta:
         model = User
-        fields = ["full_name", "role", "id_card", "email", "phone", "detail", "discipline"]
+        fields = ["full_name", "id_card", "email", "phone", "role", "discipline", "detail"]
 
     def clean(self):
         cleaned = super().clean()
