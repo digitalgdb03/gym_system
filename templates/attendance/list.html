@@ -13,18 +13,27 @@
   </form>
 </div>
 
-<div class="grid cols-3" style="margin-bottom:20px">
-  <div class="card stat">
-    <div class="ico tint-o"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg></div>
-    <div class="label">En el gimnasio ahora</div><div class="value">{{ inside }}</div><div class="substat">clientes presentes</div>
+<div style="display:flex; gap:20px; align-items:stretch; flex-wrap:wrap; margin-bottom:20px;">
+  <div class="grid" style="flex:1; min-width:280px; margin:0; display:grid; grid-template-columns:repeat(3,1fr); gap:20px;">
+    <div class="card stat">
+      <div class="ico tint-o"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg></div>
+      <div class="label">En el gimnasio ahora</div><div class="value">{{ inside }}</div><div class="substat">clientes presentes</div>
+    </div>
+    <div class="card stat">
+      <div class="ico tint-b"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></div>
+      <div class="label">Asistencias de hoy</div><div class="value">{{ total }}</div><div class="substat">entradas registradas</div>
+    </div>
+    <div class="card stat">
+      <div class="ico tint-c"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 13h8V3H3zM13 21h8V11h-8zM13 3v6h8V3zM3 21h8v-6H3z"/></svg></div>
+      <div class="label">Clientes distintos</div><div class="value">{{ distinct }}</div><div class="substat">personas hoy</div>
+    </div>
   </div>
-  <div class="card stat">
-    <div class="ico tint-b"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></div>
-    <div class="label">Asistencias de hoy</div><div class="value">{{ total }}</div><div class="substat">entradas registradas</div>
-  </div>
-  <div class="card stat">
-    <div class="ico tint-c"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 13h8V3H3zM13 21h8V11h-8zM13 3v6h8V3zM3 21h8v-6H3z"/></svg></div>
-    <div class="label">Clientes distintos</div><div class="value">{{ distinct }}</div><div class="substat">personas hoy</div>
+
+  <div class="tasa-bcv-card" style="flex:0 0 300px; margin:0; min-height:100%; max-width:none; justify-content:center; text-align:center;">
+    <div class="tasa-bcv-card-content" style="text-align:center;">
+      <h3>Tasa del Día</h3>
+      <div class="val">{{ gym.bcv_rate|default:"—" }} <small>Bs</small></div>
+    </div>
   </div>
 </div>
 
@@ -60,7 +69,8 @@
 
 {% if just_marked %}
 <div id="bigAlert" style="position:fixed;inset:0;background:rgba(0,0,0,.85);display:flex;align-items:center;justify-content:center;z-index:9999">
-  {% if just_marked.status == 'OVERDUE' %}{% with color="#d72c2c" icon="⚠️" %}{% include "attendance/_big_alert.html" %}{% endwith %}
+  {% if just_marked.status == 'ERROR' %}{% with color="#d72c2c" icon="⛔" %}{% include "attendance/_big_alert.html" %}{% endwith %}
+  {% elif just_marked.status == 'OVERDUE' %}{% with color="#d72c2c" icon="⚠️" %}{% include "attendance/_big_alert.html" %}{% endwith %}
   {% elif just_marked.status == 'FROZEN' %}{% with color="#1d4ed8" icon="❄️" %}{% include "attendance/_big_alert.html" %}{% endwith %}
   {% else %}{% with color="#15803d" icon="✅" %}{% include "attendance/_big_alert.html" %}{% endwith %}{% endif %}
 </div>
@@ -69,7 +79,7 @@
     var o = document.getElementById("bigAlert");
     var close = function () { o.style.opacity = "0"; setTimeout(function () { o.remove(); }, 300); };
     o.addEventListener("click", close);
-    setTimeout(close, 3500);
+    setTimeout(close, 4000);
   })();
 </script>
 {% endif %}

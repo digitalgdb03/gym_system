@@ -1,18 +1,39 @@
 {% extends "base.html" %}
 {% load widget_tweaks %}
 {% block page_title %}Configuración{% endblock %}
-{% block page_sub %}Tasa manual y datos del gimnasio{% endblock %}
+{% block page_sub %}Tasa BCV y datos del gimnasio{% endblock %}
 {% block content %}
-<form method="post" class="card" style="max-width:560px">
-  {% csrf_token %}
-  <h3>Datos del gimnasio y tasa</h3>
-  {% for field in form %}
-    <div class="field">
-      <label>{{ field.label }}</label>
-      {% render_field field class="input" %}
-      {% for error in field.errors %}<div class="msg error">{{ error }}</div>{% endfor %}
-    </div>
-  {% endfor %}
-  <button type="submit" class="btn btn-primary" style="margin-top:14px">Guardar</button>
-</form>
+
+<div class="grid cols-2" style="align-items:start">
+  <form method="post" class="card" style="margin:0">
+    {% csrf_token %}
+    <h3>Datos del gimnasio y tasa</h3>
+    {% for field in form %}
+      <div class="field"><label>{{ field.label }}</label>{% render_field field class="input" %}
+        {% for e in field.errors %}<div class="msg error">{{ e }}</div>{% endfor %}</div>
+    {% endfor %}
+    <div class="section-note" style="margin:10px 0">La tasa que edites aquí se guarda como <b>manual</b> para el día de hoy.</div>
+    <button type="submit" class="btn btn-primary" style="margin-top:6px">Guardar</button>
+  </form>
+
+  <div class="card" style="margin:0">
+    <h3>Tasa BCV automática</h3>
+    <p class="section-note" style="margin-bottom:12px">Obtén la tasa oficial del día directamente del BCV. Si no hay conexión ese día, ingrésala manualmente en el formulario de la izquierda.</p>
+    <a class="btn btn-primary" href="{% url 'configuration:refresh_bcv' %}">↻ Actualizar desde BCV</a>
+
+    <h3 style="margin-top:24px">Historial de tasas</h3>
+    <div class="table-wrap"><table>
+      <thead><tr><th>Fecha</th><th>Tasa (Bs/USD)</th><th>Origen</th></tr></thead>
+      <tbody>
+      {% for r in rates %}
+        <tr>
+          <td>{{ r.date|date:"d/m/Y" }}</td>
+          <td><b>{{ r.rate }}</b></td>
+          <td><span class="role-badge {% if r.source == 'AUTO' %}role-INSTRUCTOR{% else %}role-EMPLEADO{% endif %}">{{ r.get_source_display }}</span></td>
+        </tr>
+      {% empty %}<tr><td colspan="3" style="text-align:center;color:var(--muted)">Sin registros aún.</td></tr>{% endfor %}
+      </tbody>
+    </table></div>
+  </div>
+</div>
 {% endblock %}

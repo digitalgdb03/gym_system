@@ -1,5 +1,6 @@
 from decimal import Decimal
 from django.db import models
+from django.utils import timezone
 
 
 class GymConfig(models.Model):
@@ -25,3 +26,25 @@ class GymConfig(models.Model):
     def load(cls):
         obj, _ = cls.objects.get_or_create(pk=1)
         return obj
+
+
+class ExchangeRate(models.Model):
+    """Registro diario de la tasa BCV (una fila por fecha)."""
+
+    class Source(models.TextChoices):
+        AUTO   = "AUTO",   "Automática (BCV)"
+        MANUAL = "MANUAL", "Manual"
+
+    date       = models.DateField("Fecha", unique=True, default=timezone.localdate)
+    rate       = models.DecimalField("Tasa (Bs/USD)", max_digits=12, decimal_places=2)
+    source     = models.CharField("Origen", max_length=6, choices=Source.choices,
+                                  default=Source.AUTO)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["-date"]
+        verbose_name = "Tasa de cambio"
+        verbose_name_plural = "Tasas de cambio"
+
+    def __str__(self):
+        return f"{self.date} · {self.rate} Bs ({self.get_source_display()})"

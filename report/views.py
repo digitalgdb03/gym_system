@@ -1,11 +1,10 @@
 from collections import Counter
 from datetime import timedelta
-
 from django.contrib.auth.decorators import login_required
 from django.db.models import Count, Sum
 from django.shortcuts import render
 from django.utils import timezone
-
+from configuration.rates import update_today_rate
 from attendance.models import Attendance
 from client.models import Client
 from configuration.models import GymConfig
@@ -33,6 +32,7 @@ def _with_pct(serie):
 @login_required
 def dashboard(request):
     today = timezone.localdate()
+    update_today_rate()
     cfg = GymConfig.load()
 
     todays_payments = Payment.objects.filter(created_at__date=today).select_related("client", "plan")
