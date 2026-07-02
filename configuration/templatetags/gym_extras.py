@@ -7,13 +7,16 @@ register = template.Library()
 
 @register.filter
 def bs(value):
-    """Convierte un monto USD a bolívares con la tasa BCV actual (formato es-VE)."""
+    """Convierte un monto USD a bolívares con la tasa BCV vigente (formato es-VE)."""
     try:
         usd = Decimal(str(value))
     except (InvalidOperation, TypeError):
         return value
-    total = usd * GymConfig.load().bcv_rate
-    s = f"{total:,.2f}"                                   # 1,234.50 (US)
+    rate = GymConfig.load().bcv_rate      # property -> ExchangeRate.current()
+    if not rate:
+        return "—"                        # aún no hay tasa registrada
+    total = usd * rate
+    s = f"{total:,.2f}"                                    # 1,234.50 (US)
     return s.replace(",", "X").replace(".", ",").replace("X", ".")  # 1.234,50
 
 
