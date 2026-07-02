@@ -7,30 +7,52 @@
   <title>{% block title %}Zona Gym{% endblock %}</title>
   <link rel="icon" href="{% static 'images/zona_gym.png' %}">
   <link rel="stylesheet" href="{% static 'css/styles.css' %}">
-  <style>
+<style>
     /* ================================================================
-       Ajustes que se apoyan en tu styles.css (NO lo reemplazan):
-       - Modo riel: menu minimizado a solo iconos.
-       - Corrige el margen del contenido en riel (tu .main usa margin-left).
-       Tu styles.css ya hace el resto (sidebar fijo, iconos, activo, etc.)
+       Menu lateral (se apoya en tu styles.css, NO lo reemplaza):
+       - ESCRITORIO (>=1081px): riel fijo de solo iconos; al pasar el
+         raton por encima se expande y muestra los nombres.
+         NO depende del boton hamburguesa (queda oculto).
+       - MOVIL (<=1080px): el menu se muestra/oculta con el boton
+         hamburguesa (comportamiento original de tu styles.css).
        ================================================================ */
-    #appRoot.is-rail aside.sidebar{ width:74px !important; padding-left:12px !important; padding-right:12px !important; }
-    #appRoot.is-rail .sidebar .brand-logo{ width:40px !important; height:40px !important; }
-    #appRoot.is-rail .sidebar .brand > div,
-    #appRoot.is-rail .sidebar .nav-label,
-    #appRoot.is-rail #nav button .lbl,
-    #appRoot.is-rail .sidebar .footer{ display:none !important; }
-    #appRoot.is-rail .sidebar .brand{ justify-content:center; padding-bottom:16px; }
-    #appRoot.is-rail #nav button{ justify-content:center; position:relative; padding-left:0; padding-right:0; }
-    #appRoot.is-rail #nav button:hover::after{
-      content:attr(data-title); position:absolute; left:calc(100% + 12px); top:50%;
-      transform:translateY(-50%); background:#1f2440; color:#fff; padding:6px 10px;
-      border-radius:7px; font-size:12px; white-space:nowrap; z-index:120;
-      box-shadow:0 8px 22px rgba(0,0,0,.3);
-    }
-    /* En pantallas anchas, cuando esta en riel, el contenido se pega al riel */
     @media (min-width:1081px){
-      #appRoot.is-rail.menu-open .main{ margin-left:74px !important; }
+      /* Riel siempre visible; ignora .menu-open para no depender del boton */
+      #appRoot aside.sidebar{
+        transform:none !important;
+        width:74px;
+        padding-left:12px !important; padding-right:12px !important;
+        overflow-x:hidden;
+        transition:width .2s ease, padding .2s ease;
+      }
+      /* El contenido queda pegado al riel y NO se mueve al expandir (overlay) */
+      #appRoot .main{ margin-left:74px !important; }
+
+      /* Modo riel: ocultar textos y centrar iconos */
+      #appRoot .sidebar .brand > div,
+      #appRoot .sidebar .nav-label,
+      #appRoot #nav button .lbl,
+      #appRoot .sidebar .footer{ display:none; }
+      #appRoot .sidebar .brand{ justify-content:center; padding-bottom:16px; }
+      #appRoot .sidebar .brand-logo{ width:40px; height:40px; }
+      #appRoot #nav button{ justify-content:center; padding-left:0; padding-right:0; }
+
+      /* Al pasar el raton: expandir y mostrar los nombres */
+      #appRoot aside.sidebar:hover{
+        width:248px;
+        padding-left:18px !important; padding-right:18px !important;
+        box-shadow:0 24px 60px -20px rgba(0,0,0,.45);
+      }
+      #appRoot .sidebar:hover .brand > div,
+      #appRoot .sidebar:hover .nav-label,
+      #appRoot .sidebar:hover #nav button .lbl,
+      #appRoot .sidebar:hover .footer{ display:block; }
+      #appRoot .sidebar:hover .brand{ justify-content:flex-start; }
+      #appRoot .sidebar:hover .brand-logo{ width:44px; height:44px; }
+      #appRoot .sidebar:hover #nav button{ justify-content:flex-start; padding-left:13px; padding-right:13px; }
+
+      /* En escritorio el menu no depende del boton: se oculta */
+      #appRoot .menu-toggle{ display:none; }
     }
   </style>
 </head>
@@ -134,32 +156,24 @@
       if (ov && e.target === ov && ov.dataset.close) location.href = ov.dataset.close;
     });
 
-    // Menu lateral: EXPANDIDO por defecto. Umbrales alineados a tu styles.css
-    // (sidebar overlay <=1080px, contenido con margen >=1081px).
+    // Menu lateral:
+    // - Escritorio (>=1081px): riel fijo con expansion por hover (via CSS). No usa boton.
+    // - Movil (<=1080px): el boton hamburguesa muestra/oculta el menu (overlay).
     (function () {
       var root = document.getElementById("appRoot");
       var toggle = document.getElementById("menuToggle");
       var backdrop = document.getElementById("backdrop");
-      var KEY = "zg_rail_v2";                    // clave nueva: ignora preferencias viejas
 
       function init() {
-        if (window.innerWidth >= 1081) {
-          root.classList.add("menu-open");
-          root.classList.toggle("is-rail", localStorage.getItem(KEY) === "1");
-        } else {
-          root.classList.remove("menu-open");     // en movil arranca oculto (overlay)
-          root.classList.remove("is-rail");
-        }
+        // En movil arranca oculto; en escritorio el CSS controla el riel/hover.
+        root.classList.remove("is-rail");
+        if (window.innerWidth < 1081) root.classList.remove("menu-open");
       }
       init();
 
       if (toggle) toggle.addEventListener("click", function () {
-        if (window.innerWidth >= 1081) {
-          var rail = root.classList.toggle("is-rail");   // ancho: alterna riel (solo iconos)
-          localStorage.setItem(KEY, rail ? "1" : "0");
-        } else {
-          root.classList.toggle("menu-open");            // movil: muestra/oculta overlay
-        }
+        // Solo relevante en movil (en escritorio el boton esta oculto).
+        root.classList.toggle("menu-open");
       });
       if (backdrop) backdrop.addEventListener("click", function () { root.classList.remove("menu-open"); });
       window.addEventListener("resize", init);
