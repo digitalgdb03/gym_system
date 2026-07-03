@@ -1,0 +1,23 @@
+{% load gym_extras %}
+{% for s in areas %}
+<div class="plan-area fade-in">
+  <div class="head"><span class="tag">{{ s.name }}</span>
+    <span class="chip-area" style="background:{{ s.color }}">Área de servicio</span></div>
+  <div class="plan-cards">
+    {% for p in s.plans.all %}
+    <div class="plan">
+      <div class="plan-acts">
+        <a class="icon-btn" href="{% url 'plans:update' p.pk %}">✎</a>
+        <a class="icon-btn del" href="{% url 'plans:delete' p.pk %}">🗑</a>
+      </div>
+      <div class="dur">{{ p.name|default:p.get_duration_display }}{% if p.is_custom %} · pers.{% endif %}</div>
+      <div class="price"><small>$</small>{{ p.price_bcv }}<span class="price-tag">BCV</span></div>
+      <div class="price-bs">≈ Bs {{ p.price_bcv|bs }}</div>
+      <div class="price2"><b>${{ p.price_cash }}</b> divisas <span>· Bs {{ p.price_cash|bs }}</span></div>
+      <div class="feat">{% if p.name %}Incluye: {% for a in p.included_services.all %}{{ a.name }}{% if not forloop.last %} + {% endif %}{% endfor %}{% else %}Acceso a {{ s.name }}{% endif %}</div>
+    </div>
+    {% empty %}<div class="section-note">Sin planes en esta área.</div>{% endfor %}
+  </div>
+</div>
+{% endfor %}
+{% include "_partials/pagination.html" %}

@@ -3,12 +3,72 @@ from .models import User
 
 
 class StaffForm(forms.ModelForm):
+    password1 = forms.CharField(
+        label="Contraseña", required=False, widget=forms.PasswordInput,
+        help_text="Con esta contraseña el usuario ingresará al sistema.")
+    password2 = forms.CharField(
+        label="Confirmar contraseña", required=False, widget=forms.PasswordInput)
+
     class Meta:
         model = User
-        fields = ["full_name", "id_card", "email", "phone", "role", "discipline", "detail"]
+        fields = ["full_name", "doc_type", "id_card", "email", "phone", "role", "disciplines", "detail"]
+        widgets = {"disciplines": forms.CheckboxSelectMultiple}
+        help_texts = {"disciplines": "Selecciona una o varias disciplinas que enseña."}
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        if self.instance.pk is None:
+            self.fields["password1"].required = True
+            self.fields["password2"].required = True
+        else:
+            self.fields["password1"].help_text = "Déjalo vacío para no cambiar la contraseña actual."
+
+    def clean_id_card(self):
+        return (self.cleaned_data.get("id_card") or "").replace(".", "").replace("-", "").strip()
 
     def clean(self):
         cleaned = super().clean()
-        if cleaned.get("role") == User.Role.INSTRUCTOR and not cleaned.get("discipline"):
-            self.add_error("discipline", "Selecciona la disciplina que enseña.")
+        if cleaned.get("role") == User.Role.INSTRUCTOR and not cleaned.get("disciplines"):
+            self.add_error("disciplines", "Selecciona al menos una disciplina que enseña.")
+
+        id_card = cleaned.get("id_card")
+        role = cleaned.get("role")
+        doc_type = cleaned.get("doc_type")
+        if id_card and role:
+            qs = User.objects.filter(id_card=id_card, role=role, doc_type=doc_type)
+            if self.instance.pk:
+                qs = qs.exclude(pk=self.instance.pk)
+            if qs.exists():
+                self.add_error("id_card", "Ya existe un usuario con ese documento para ese rol.")
+
+        p1, p2 = cleaned.get("password1"), cleaned.get("password2")
+        if p1 or p2:
+            if p1 != p2:
+                self.add_error("password2", "Las contraseñas no coinciden.")
+            elif len(p1) < 6:
+                self.add_error("password1", "La contraseña debe tener al menos 6 caracteres.")
+        return cleaned
+
+
+class ProfileForm(forms.ModelForm):
+    """Formulario reducido para que cada usuario edite su propio perfil
+    (sin poder tocar su rol, cédula o disciplinas)."""
+    password1 = forms.CharField(
+        label="Nueva contraseña", required=False, widget=forms.PasswordInput,
+        help_text="Déjalo vacío para no cambiar tu contraseña actual.")
+    password2 = forms.CharField(
+        label="Confirmar nueva contraseña", required=False, widget=forms.PasswordInput)
+
+    class Meta:
+        model = User
+        fields = ["full_name", "email", "phone"]
+
+    def clean(self):
+        cleaned = super().clean()
+        p1, p2 = cleaned.get("password1"), cleaned.get("password2")
+        if p1 or p2:
+            if p1 != p2:
+                self.add_error("password2", "Las contraseñas no coinciden.")
+            elif len(p1) < 6:
+                self.add_error("password1", "La contraseña debe tener al menos 6 caracteres.")
         return cleaned

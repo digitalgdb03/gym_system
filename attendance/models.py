@@ -2,13 +2,15 @@ import re
 from django.db import models
 from django.utils import timezone
 
+from configuration.models import CreatedByModel
+
 
 def normalize_id(value):
     """V-25.481.230 -> 'v25481230' (quita puntos, guiones y espacios)."""
     return re.sub(r"[^0-9a-zA-Z]", "", value or "").lower()
 
 
-class Attendance(models.Model):
+class Attendance(CreatedByModel):
     client    = models.ForeignKey("client.Client", on_delete=models.CASCADE, related_name="attendances")
     check_in  = models.DateTimeField("Entrada", default=timezone.now)
     check_out = models.DateTimeField("Salida", null=True, blank=True)

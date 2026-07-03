@@ -10,35 +10,15 @@
     <a class="pill {% if request.GET.role == 'INSTRUCTOR' %}active{% endif %}" href="?role=INSTRUCTOR">Instructores</a>
     <a class="pill {% if request.GET.role == 'EMPLOYEE' %}active{% endif %}" href="?role=EMPLOYEE">Empleados</a>
   </div>
+  <form method="get" class="search" data-target="search-results">
+    {% if request.GET.role %}<input type="hidden" name="role" value="{{ request.GET.role }}">{% endif %}
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+    <input name="q" value="{{ request.GET.q }}" placeholder="Buscar por nombre, cédula o correo…">
+  </form>
   <a class="btn btn-primary" href="{% url 'user:create' %}" style="margin-left:auto">+ Nuevo usuario</a>
 </div>
 
-<div class="card"><div class="table-wrap"><table>
-  <thead><tr><th>Nombre</th><th>Cédula</th><th>Correo</th><th>Rol</th><th>Detalle</th><th>Teléfono</th><th></th></tr></thead>
-  <tbody>
-  {% for u in staff %}
-    <tr>
-      <td data-label="Nombre">
-        <div class="cell-name">
-          <div class="av {% cycle '' 'o' 'n' %}">{{ u.full_name|default:u.username|initials }}</div>
-          <b>{{ u.full_name|default:"—" }}</b>
-        </div>
-      </td>
-      <td data-label="Cédula">{{ u.id_card|default:"—" }}</td>
-      <td data-label="Correo">{{ u.email|default:"—" }}</td>
-      <td data-label="Rol"><span class="role-badge {% if u.role == 'INSTRUCTOR' %}role-INSTRUCTOR{% else %}role-EMPLEADO{% endif %}">{{ u.get_role_display }}</span></td>
-      <td data-label="Detalle">{% if u.is_instructor %}{{ u.discipline.name|default:u.detail|default:"—" }}{% else %}{{ u.detail|default:"—" }}{% endif %}</td>
-      <td data-label="Teléfono">{{ u.phone|default:"—" }}</td>
-      <td data-label="">
-        <div class="row-actions">
-          <a class="icon-btn" href="{% url 'user:update' u.pk %}" title="Editar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/></svg></a>
-          <a class="icon-btn del" href="{% url 'user:delete' u.pk %}" title="Eliminar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m2 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/></svg></a>
-        </div>
-      </td>
-    </tr>
-  {% empty %}<tr><td colspan="7" style="text-align:center;color:var(--muted)">Sin usuarios.</td></tr>{% endfor %}
-  </tbody>
-</table></div></div>
+<div id="search-results">{% include "user/_results.html" %}</div>
 
 {% if show_form %}
 <div class="modal-overlay" data-close="{% url 'user:list' %}">
@@ -48,9 +28,22 @@
       <div class="modal-body">
         {% if form.non_field_errors %}<div class="msg error">{{ form.non_field_errors }}</div>{% endif %}
         {% for field in form %}
-          <div class="field" data-field="{{ field.name }}"><label>{{ field.label }}</label>{% render_field field class="input" %}
-            {% if field.help_text %}<div class="field-hint">{{ field.help_text }}</div>{% endif %}
-            {% for e in field.errors %}<div class="msg error">{{ e }}</div>{% endfor %}</div>
+          {% if field.name == "disciplines" %}
+            <div class="field" data-field="{{ field.name }}">
+              <label>{{ field.label }}</label>
+              <div class="check-grid">
+                {% for choice in field %}
+                  <div class="field-check"><label class="check">{{ choice.tag }}<span>{{ choice.choice_label }}</span></label></div>
+                {% empty %}<div class="field-hint">No hay disciplinas registradas. Crea un área en Servicios.</div>{% endfor %}
+              </div>
+              {% if field.help_text %}<div class="field-hint">{{ field.help_text }}</div>{% endif %}
+              {% for e in field.errors %}<div class="msg error">{{ e }}</div>{% endfor %}
+            </div>
+          {% else %}
+            <div class="field" data-field="{{ field.name }}"><label>{{ field.label }}</label>{% render_field field class="input" %}
+              {% if field.help_text %}<div class="field-hint">{{ field.help_text }}</div>{% endif %}
+              {% for e in field.errors %}<div class="msg error">{{ e }}</div>{% endfor %}</div>
+          {% endif %}
         {% endfor %}
       </div>
       <div class="modal-actions">
@@ -86,7 +79,7 @@
     var form = document.getElementById("userForm");
     if (!form) return;
     var role = form.querySelector('[name="role"]');
-    var disc = form.querySelector('[data-field="discipline"]');
+    var disc = form.querySelector('[data-field="disciplines"]');
     function sync() {
       if (disc) disc.style.display = (role && role.value === "INSTRUCTOR") ? "" : "none";
     }

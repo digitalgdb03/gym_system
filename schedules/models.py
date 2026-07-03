@@ -1,8 +1,11 @@
+from datetime import time
 from django.core.exceptions import ValidationError
 from django.db import models
 
+from configuration.models import CreatedByModel
 
-class GymClass(models.Model):
+
+class GymClass(CreatedByModel):
     class Kind(models.TextChoices):
         FIXED  = "FIXED",  "Fija"
         CUSTOM = "CUSTOM", "Personalizada"
@@ -15,12 +18,9 @@ class GymClass(models.Model):
         FRI = 4, "Viernes"
         SAT = 5, "Sábado"
 
-    BLOCKS = [
-        "8:40-10:30 am", "9:00-11:00 am", "2:40-3:50 pm",
-        "6:00-7:00 pm", "7:00-8:00 pm", "8:00-9:00 pm", "9:00-10:00 pm",
-    ]
-    BLOCK_CHOICES = [(b, b) for b in BLOCKS]
     MAX_PER_CELL = 2
+    OPEN_TIME  = time(5, 0)
+    CLOSE_TIME = time(22, 0)
 
     service           = models.ForeignKey("services.Service", on_delete=models.PROTECT,
                                            related_name="classes",
@@ -36,16 +36,23 @@ class GymClass(models.Model):
                                            related_name="classes_as_second",
                                            limit_choices_to={"role": "INSTRUCTOR"},
                                            verbose_name="Segundo entrenador")
-    day   = models.IntegerField("Día", choices=Day.choices)
-    block = models.CharField("Bloque horario", max_length=20, choices=BLOCK_CHOICES)
+    day        = models.IntegerField("Día", choices=Day.choices)
+    start_time = models.TimeField("Hora de inicio")
+    end_time   = models.TimeField("Hora de fin")
 
     class Meta:
-        ordering = ["day", "block"]
+        ordering = ["day", "start_time"]
         verbose_name = "Clase"
         verbose_name_plural = "Clases"
 
     def __str__(self):
-        return f"{self.service.name} · {self.get_day_display()} {self.block}"
+        return f"{self.service.name} · {self.get_day_display()} {self.block_label}"
+
+    @property
+    def block_label(self):
+        if not (self.start_time and self.end_time):
+            return ""
+        return f"{self.start_time:%I:%M %p} - {self.end_time:%I:%M %p}".replace("AM", "am").replace("PM", "pm")
 
     @property
     def instructor_names(self):
@@ -58,14 +65,24 @@ class GymClass(models.Model):
         if self.service_id and self.service.kind != "GUIDED":
             raise ValidationError({"service": "Solo las clases dirigidas se programan en el calendario."})
 
-        siblings = GymClass.objects.filter(day=self.day, block=self.block)
+        if self.start_time and self.end_time:
+            if self.start_time < self.OPEN_TIME or self.end_time > self.CLOSE_TIME:
+                raise ValidationError("El horario debe estar entre las 5:00 am y las 10:00 pm.")
+            if self.end_time <= self.start_time:
+                raise ValidationError({"end_time": "La hora de fin debe ser posterior a la hora de inicio."})
+
+        if self.day is None or not (self.start_time and self.end_time):
+            return
+
+        siblings = GymClass.objects.filter(day=self.day)
         if self.pk:
             siblings = siblings.exclude(pk=self.pk)
+        overlapping = siblings.filter(start_time__lt=self.end_time, end_time__gt=self.start_time)
 
-        if siblings.count() >= self.MAX_PER_CELL:
-            raise ValidationError(f"Cupo máximo ({self.MAX_PER_CELL}) en ese día y bloque.")
+        if overlapping.count() >= self.MAX_PER_CELL:
+            raise ValidationError(f"Cupo máximo ({self.MAX_PER_CELL}) de clases simultáneas en ese horario.")
 
-        if self.instructor_id and siblings.filter(
+        if self.instructor_id and overlapping.filter(
             models.Q(instructor=self.instructor) | models.Q(second_instructor=self.instructor)
         ).exists():
-            raise ValidationError({"instructor": "Ese entrenador ya tiene una clase en ese bloque."})
+            raise ValidationError({"instructor": "Ese entrenador ya tiene una clase que se cruza con ese horario."})

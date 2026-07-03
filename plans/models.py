@@ -2,8 +2,10 @@ from datetime import timedelta
 from dateutil.relativedelta import relativedelta
 from django.db import models
 
+from configuration.models import CreatedByModel
 
-class Plan(models.Model):
+
+class Plan(CreatedByModel):
     class Duration(models.TextChoices):
         DAILY   = "DAILY",   "Diaria"
         WEEKLY  = "WEEKLY",  "Semanal"

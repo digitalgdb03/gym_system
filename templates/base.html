@@ -131,7 +131,7 @@
         <div class="user-menu">
           <button class="avatar" id="avatarBtn" title="Cuenta">{{ user.full_name|default:user.username|initials }}</button>
           <div class="user-dropdown" id="userMenu" style="display:none">
-            <button type="button" onclick="location.href='{% url 'user:update' user.pk %}'">Mi perfil</button>
+            <button type="button" onclick="location.href='{% url 'user:profile' %}'">Mi perfil</button>
             <button type="button" onclick="location.href='{% url 'configuration:edit' %}'">Configuración</button>
             <form method="post" action="{% url 'user:logout' %}" style="margin:0">{% csrf_token %}
               <button type="submit" style="width:100%">Cerrar sesión</button>
@@ -142,21 +142,23 @@
       </header>
 
       <section class="content">
-        {% if messages %}
-          {% for m in messages %}<div class="msg {{ m.tags }}">{{ m }}</div>{% endfor %}
-        {% endif %}
         {% block content %}{% endblock %}
       </section>
     </main>
   </div>
 
+  {% if messages %}
+  <div id="toasts">
+    {% for m in messages %}
+      <div class="toast {% if m.tags == 'success' %}toast-ok{% elif m.tags == 'error' %}toast-error{% endif %}">{{ m }}</div>
+    {% endfor %}
+  </div>
+  {% endif %}
+
   {% block scripts %}{% endblock %}
   <script>
-    // Cerrar modales al tocar el fondo
-    document.addEventListener("click", function (e) {
-      var ov = e.target.closest(".modal-overlay");
-      if (ov && e.target === ov && ov.dataset.close) location.href = ov.dataset.close;
-    });
+    // Los modales solo se cierran con una acción explícita (Cancelar,
+    // Guardar, etc.), nunca al hacer clic fuera de ellos.
 
     // Menu lateral:
     // - Escritorio (>=1081px): riel fijo con expansion por hover (via CSS). No usa boton.
@@ -201,6 +203,57 @@
       });
       document.addEventListener("click", function (e) {
         if (menu.style.display === "flex" && !menu.contains(e.target) && e.target !== btn) close();
+      });
+    })();
+
+    // Buscadores: filtran solos mientras se escribe (sin Enter) y sin
+    // recargar toda la pagina: solo se actualiza el bloque de resultados.
+    (function () {
+      var forms = document.querySelectorAll("form.search[data-target]");
+      Array.prototype.forEach.call(forms, function (form) {
+        var input = form.querySelector('input[name="q"]');
+        var target = document.getElementById(form.dataset.target);
+        if (!input || !target) return;
+        var timer;
+        function runSearch() {
+          var params = new URLSearchParams(new FormData(form));
+          var url = (form.getAttribute("action") || window.location.pathname) + "?" + params.toString();
+          fetch(url, { headers: { "X-Requested-With": "XMLHttpRequest" } })
+            .then(function (r) { return r.text(); })
+            .then(function (html) {
+              target.innerHTML = html;
+              window.history.replaceState(null, "", url);
+            });
+        }
+        input.addEventListener("input", function () {
+          clearTimeout(timer);
+          timer = setTimeout(runSearch, 400);
+        });
+      });
+
+      // Los buscadores SIN data-target (poco comunes) siguen enviando
+      // el formulario normal como respaldo.
+      var plainInputs = document.querySelectorAll('form.search:not([data-target]) input[name="q"]');
+      Array.prototype.forEach.call(plainInputs, function (input) {
+        var timer;
+        input.addEventListener("input", function () {
+          clearTimeout(timer);
+          timer = setTimeout(function () { input.form.submit(); }, 450);
+        });
+      });
+    })();
+
+    // Mensajes de exito/error: aparecen como notificaciones flotantes y
+    // se ocultan solas despues de unos segundos.
+    (function () {
+      var wrap = document.getElementById("toasts");
+      if (!wrap) return;
+      Array.prototype.forEach.call(wrap.querySelectorAll(".toast"), function (t, i) {
+        setTimeout(function () { t.classList.add("show"); }, 30 + i * 120);
+        setTimeout(function () {
+          t.classList.remove("show");
+          t.addEventListener("transitionend", function () { t.remove(); }, { once: true });
+        }, 4500 + i * 250);
       });
     })();
   </script>

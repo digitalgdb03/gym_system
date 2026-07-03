@@ -8,5 +8,5 @@ class CustomUserAdmin(UserAdmin):
     list_display = ("username", "full_name", "role", "id_card", "is_active")
     list_filter = ("role", "is_active")
     fieldsets = UserAdmin.fieldsets + (
-        ("Datos del gimnasio", {"fields": ("full_name", "role", "id_card", "phone", "detail", "discipline")}),
+        ("Datos del gimnasio", {"fields": ("full_name", "role", "id_card", "phone", "detail", "disciplines")}),
     )

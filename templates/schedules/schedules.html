@@ -11,21 +11,21 @@
 </div>
 
 <div class="card cal">
-  <!-- ESCRITORIO: rejilla semanal (sin cambios) -->
+  <!-- ESCRITORIO: rejilla semanal, bloques de 30 min de 5am a 10pm -->
   <div class="cal-desktop"><div class="cal-grid">
     <div></div>
     {% for value, label in days %}<div class="cal-head">{{ label }}</div>{% endfor %}
     {% for row in grid %}
-      <div class="cal-time">{{ row.block }}</div>
+      <div class="cal-time">{{ row.block_label }}</div>
       {% for cell in row.cells %}
       <div class="cal-cell {% if cell.full %}full{% endif %}">
         {% for c in cell.classes %}
           <a class="klass {% if c.kind == 'CUSTOM' %}klass-pers{% endif %}" style="background:{{ c.service.color }}" href="{% url 'schedules:update' c.pk %}">
-            <b>{{ c.service.name }}{% if c.kind == 'CUSTOM' %} · Pers.{% endif %}</b><span>{{ c.instructor_names }}</span>
+            <b>{{ c.service.name }}{% if c.kind == 'CUSTOM' %} · Pers.{% endif %}</b><span>{{ c.block_label }} · {{ c.instructor_names }}</span>
           </a>
         {% endfor %}
         {% if cell.full %}<div class="cap-note">cupo máx. (2)</div>
-        {% else %}<a class="add-here" href="{% url 'schedules:create' %}?day={{ cell.day }}&block={{ row.block|urlencode }}">+</a>{% endif %}
+        {% else %}<a class="add-here" href="{% url 'schedules:create' %}?day={{ cell.day }}&block={{ row.block|time:'H:i' }}">+</a>{% endif %}
       </div>
       {% endfor %}
     {% endfor %}
@@ -43,11 +43,11 @@
     <div class="cal-day-panel" data-day="{{ value }}"{% if not forloop.first %} hidden{% endif %}>
       {% for row in grid %}{% for cell in row.cells %}{% if cell.day == value and cell.classes %}
         <div class="cal-row">
-          <div class="cal-row-time">{{ row.block }}</div>
+          <div class="cal-row-time">{{ row.block_label }}</div>
           <div class="cal-row-classes">
             {% for c in cell.classes %}
               <a class="klass {% if c.kind == 'CUSTOM' %}klass-pers{% endif %}" style="background:{{ c.service.color }}" href="{% url 'schedules:update' c.pk %}">
-                <b>{{ c.service.name }}{% if c.kind == 'CUSTOM' %} · Pers.{% endif %}</b><span>{{ c.instructor_names }}</span>
+                <b>{{ c.service.name }}{% if c.kind == 'CUSTOM' %} · Pers.{% endif %}</b><span>{{ c.block_label }} · {{ c.instructor_names }}</span>
               </a>
             {% endfor %}
           </div>

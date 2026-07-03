@@ -1,20 +1,56 @@
+from decimal import Decimal, ROUND_HALF_UP
 from django import forms
+from configuration.form_mixins import PlaceholderChoiceMixin
+from configuration.models import GymConfig
 from .models import Payment
 
+CENTS = Decimal("0.01")
 
-class PaymentForm(forms.ModelForm):
+
+def _round2(value):
+    return Decimal(value).quantize(CENTS, rounding=ROUND_HALF_UP)
+
+
+class PaymentForm(PlaceholderChoiceMixin, forms.ModelForm):
     class Meta:
         model = Payment
-        fields = ["client", "plan", "method", "amount_usd"]
+        fields = ["client", "plan", "method", "amount_usd", "amount_bs"]
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.fields["amount_usd"].required = False
-        self.fields["amount_usd"].help_text = "Déjalo vacío para usar la tarifa del plan según el método."
+        self.fields["amount_bs"].required = False
+        self.fields["amount_usd"].label = "Monto en USD"
+        self.fields["amount_bs"].label = "Monto en Bs"
+        self.fields["amount_usd"].help_text = "Solo para efectivo en USD. Vacío = tarifa del plan."
+        self.fields["amount_bs"].help_text = "Para Bs, pago móvil, punto de venta o transferencia. Vacío = tarifa del plan."
 
     def clean(self):
         cleaned = super().clean()
         plan, method = cleaned.get("plan"), cleaned.get("method")
-        if plan and method and not cleaned.get("amount_usd"):
-            cleaned["amount_usd"] = plan.price(Payment.currency_for_method(method))
+        if not (plan and method):
+            return cleaned
+
+        rate = GymConfig.load().bcv_rate
+        amount_usd = cleaned.get("amount_usd")
+        amount_bs = cleaned.get("amount_bs")
+
+        if method == Payment.Method.CASH_USD:
+            if not amount_usd:
+                amount_usd = plan.price(Payment.currency_for_method(method))
+            if not rate:
+                self.add_error("amount_usd", "No hay tasa BCV registrada; no se puede convertir a bolívares.")
+            else:
+                amount_bs = _round2(amount_usd * rate)
+        else:
+            if not rate:
+                self.add_error("amount_bs", "No hay tasa BCV registrada; no se puede convertir a dólares.")
+            else:
+                if not amount_bs:
+                    amount_bs = plan.price(Payment.currency_for_method(method)) * rate
+                amount_bs = _round2(amount_bs)
+                amount_usd = _round2(amount_bs / rate)
+
+        cleaned["amount_usd"] = amount_usd
+        cleaned["amount_bs"] = amount_bs
         return cleaned

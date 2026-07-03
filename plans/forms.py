@@ -1,8 +1,9 @@
 from django import forms
+from configuration.form_mixins import PlaceholderChoiceMixin
 from .models import Plan
 
 
-class PlanForm(forms.ModelForm):
+class PlanForm(PlaceholderChoiceMixin, forms.ModelForm):
     class Meta:
         model = Plan
         fields = ["service", "name", "duration", "price_bcv", "price_cash",

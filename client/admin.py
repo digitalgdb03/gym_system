@@ -9,7 +9,7 @@ class MembershipInline(admin.TabularInline):
 
 @admin.register(Client)
 class ClientAdmin(admin.ModelAdmin):
-    list_display = ("full_name", "id_card", "status", "phone")
+    list_display = ("full_name", "doc_type", "id_card", "status", "phone")
     list_filter = ("status",)
     search_fields = ("full_name", "id_card")
     inlines = [MembershipInline]

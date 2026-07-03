@@ -1,0 +1,9 @@
+{% if page_obj and page_obj.paginator.num_pages > 1 %}
+<div class="pagination">
+  <a class="pg-btn {% if not page_obj.has_previous %}disabled{% endif %}"
+     href="{% if page_obj.has_previous %}?{% querystring page=page_obj.previous_page_number %}{% else %}#{% endif %}">‹ Anterior</a>
+  <span class="pg-info">Página {{ page_obj.number }} de {{ page_obj.paginator.num_pages }}</span>
+  <a class="pg-btn {% if not page_obj.has_next %}disabled{% endif %}"
+     href="{% if page_obj.has_next %}?{% querystring page=page_obj.next_page_number %}{% else %}#{% endif %}">Siguiente ›</a>
+</div>
+{% endif %}

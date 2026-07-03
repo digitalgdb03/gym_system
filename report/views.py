@@ -47,8 +47,13 @@ def dashboard(request):
     counts = Counter(a.check_in.hour for a in todays_att)
     hourly = _with_pct([{"label": _hour_label(h), "val": counts[h]} for h in sorted(counts)])
 
-    top_block = (GymClass.objects.values("block").annotate(n=Count("id"))
-                 .order_by("-n").first() or {}).get("block", "—")
+    top_block_row = (GymClass.objects.values("start_time", "end_time").annotate(n=Count("id"))
+                     .order_by("-n").first())
+    if top_block_row:
+        st, et = top_block_row["start_time"], top_block_row["end_time"]
+        top_block = f"{st:%I:%M %p} - {et:%I:%M %p}".replace("AM", "am").replace("PM", "pm")
+    else:
+        top_block = "—"
     top_service = (GymClass.objects.values("service__name").annotate(n=Count("id"))
                    .order_by("-n").first() or {}).get("service__name", "—")
 

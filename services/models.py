@@ -1,7 +1,9 @@
 from django.db import models
 
+from configuration.models import CreatedByModel
 
-class Service(models.Model):
+
+class Service(CreatedByModel):
     class Kind(models.TextChoices):
         OPEN   = "OPEN",   "Acceso libre"
         GUIDED = "GUIDED", "Clase dirigida"

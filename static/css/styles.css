@@ -212,6 +212,13 @@ tbody tr:hover { background: #fafbfd; }
 .cal-time { font-size: 12px; color: var(--muted); font-weight: 700; display: flex; align-items: center; justify-content: flex-end; padding-right: 8px; }
 .cal-cell { min-height: 58px; border-radius: 9px; background: #fafbfd; border: 1px dashed var(--line); padding: 4px; display: flex; flex-direction: column; gap: 4px; }
 .cal-cell.full { border-style: solid; border-color: rgba(214,59,59,.3); background: rgba(214,59,59,.04); }
+
+/* Paginación */
+.pagination { display: flex; align-items: center; justify-content: center; gap: 16px; padding: 16px 0 4px; }
+.pg-btn { padding: 8px 16px; border: 1px solid var(--line); border-radius: 8px; background: #fff; color: var(--azul); font-size: 13px; font-weight: 600; }
+.pg-btn:hover { background: var(--bg); }
+.pg-btn.disabled { color: var(--muted); pointer-events: none; opacity: .5; }
+.pg-info { font-size: 13px; color: var(--muted); font-weight: 600; }
 .klass { border-radius: 7px; padding: 6px 8px; color: #fff; font-size: 11.5px; line-height: 1.25; }
 .klass b { display: block; font-weight: 700; font-size: 12px; }
 .klass span { opacity: .9; font-size: 10.5px; }
@@ -571,6 +578,8 @@ tbody tr:hover { background: #fafbfd; }
 /* Campos: checkbox, estático, ayuda */
 .field-check .check { display: flex; align-items: center; gap: 10px; cursor: pointer; font-size: 14px; font-weight: 600; color: var(--gris); }
 .field-check .check input { width: 18px; height: 18px; flex: 0 0 auto; accent-color: var(--amarillo); cursor: pointer; }
+.check-grid { display: flex; flex-direction: column; gap: 6px; margin-top: 6px; padding: 10px 12px; background: var(--bg); border: 1px solid var(--line); border-radius: 10px; }
+.check-grid .field-check { margin-bottom: 0; }
 .field-static .static-box { background: var(--bg); border: 1px solid var(--line); border-radius: 10px; padding: 11px 13px; font-size: 13.5px; color: var(--ink); line-height: 1.5; }
 .field-static .static-box b { color: var(--azul); }
 .field-hint { font-size: 12px; color: var(--muted); margin-top: 5px; }

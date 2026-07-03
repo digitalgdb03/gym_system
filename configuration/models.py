@@ -2,6 +2,17 @@ from django.db import models
 from django.utils import timezone
 
 
+class CreatedByModel(models.Model):
+    """Deja registro de qué usuario en sesión realizó la acción que creó
+    este registro (auditoría)."""
+    created_by = models.ForeignKey(
+        "user.User", null=True, blank=True, on_delete=models.SET_NULL,
+        related_name="+", verbose_name="Registrado por")
+
+    class Meta:
+        abstract = True
+
+
 class ExchangeRate(models.Model):
     """Registro diario de la tasa BCV (una fila por fecha). Fuente única de la tasa."""
 

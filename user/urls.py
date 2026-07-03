@@ -13,4 +13,5 @@ urlpatterns = [
     path("nuevo/", views.StaffCreate.as_view(), name="create"),
     path("<int:pk>/editar/", views.StaffUpdate.as_view(), name="update"),
     path("<int:pk>/eliminar/", views.StaffDelete.as_view(), name="delete"),
+    path("mi-perfil/", views.profile_edit, name="profile"),
 ]

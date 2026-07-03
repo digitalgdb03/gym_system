@@ -51,35 +51,16 @@
   </div>
 </div>
 
-<div class="card"><h3>Asistencia de hoy</h3><div class="table-wrap"><table>
-  <thead><tr><th>Cliente</th><th>Cédula</th><th>Estatus</th><th>Entrada</th><th>Salida</th><th>Ubicación</th><th></th></tr></thead>
-  <tbody>
-  {% for a in records %}
-    <tr>
-      <td data-label="Cliente"><div class="cell-name"><div class="av {% cycle '' 'o' 'n' %}">{{ a.client.full_name|slice:":2"|upper }}</div><b>{{ a.client.full_name }}</b></div></td>
-      <td data-label="Cédula">{{ a.client.id_card }}</td>
-      <td data-label="Estatus">
-        {% if a.client.status == 'OVERDUE' %}<span class="badge moroso">Moroso</span>
-        {% elif a.client.status == 'FROZEN' %}<span class="badge congelado">Congelado</span>
-        {% else %}<span class="badge activo">Activo</span>{% endif %}
-      </td>
-      <td data-label="Entrada">{{ a.check_in|date:"g:i A" }}</td>
-      <td data-label="Salida">{{ a.check_out|date:"g:i A"|default:"—" }}</td>
-      <td data-label="Ubicación">{% if a.is_inside %}<span class="badge activo">En el gimnasio</span>{% else %}<span class="badge congelado">Se retiró</span>{% endif %}</td>
-      <td data-label="">
-        <div class="row-actions">
-          {% if a.is_inside %}
-            <form method="post" action="{% url 'attendance:checkout' a.pk %}" style="display:inline">{% csrf_token %}
-              <button class="btn btn-ghost" style="padding:6px 12px">Salida</button></form>
-          {% endif %}
-          <form method="post" action="{% url 'attendance:delete' a.pk %}" style="display:inline">{% csrf_token %}
-            <button class="icon-btn del" title="Eliminar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m2 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/></svg></button></form>
-        </div>
-      </td>
-    </tr>
-  {% empty %}<tr><td colspan="7" style="text-align:center;color:var(--muted)">Sin registros hoy.</td></tr>{% endfor %}
-  </tbody>
-</table></div></div>
+<div class="card">
+  <div class="toolbar" style="margin-bottom:14px">
+    <h3 style="margin:0">Asistencia de hoy</h3>
+    <form method="get" class="search" style="margin-left:auto" data-target="search-results">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+      <input name="q" value="{{ request.GET.q }}" placeholder="Buscar por nombre o cédula…">
+    </form>
+  </div>
+  <div id="search-results">{% include "attendance/_results.html" %}</div>
+</div>
 
 {% if just_marked %}
 <div id="bigAlert" style="position:fixed;inset:0;background:rgba(0,0,0,.85);display:flex;align-items:center;justify-content:center;z-index:9999">

@@ -1,19 +1,24 @@
 import calendar
 from datetime import date, timedelta
+from dateutil.relativedelta import relativedelta
 from django.core.exceptions import ValidationError
 from django.db import models
 
+from configuration.choices import DocType
+from configuration.models import CreatedByModel
 from plans.models import Plan
 
 
-class Client(models.Model):
+class Client(CreatedByModel):
     class Status(models.TextChoices):
         ACTIVE  = "ACTIVE",  "Activo"
         FROZEN  = "FROZEN",  "Congelado"
         OVERDUE = "OVERDUE", "Moroso"
 
     full_name         = models.CharField("Nombre completo", max_length=120)
-    id_card           = models.CharField("Cédula", max_length=20, unique=True)
+    doc_type          = models.CharField("Tipo de documento", max_length=1,
+                                        choices=DocType.choices, default=DocType.V)
+    id_card           = models.CharField("Cédula", max_length=20)
     email             = models.EmailField("Correo", blank=True)
     phone             = models.CharField("Teléfono", max_length=40, blank=True)
     status            = models.CharField("Estado", max_length=10, choices=Status.choices,
@@ -26,9 +31,22 @@ class Client(models.Model):
         ordering = ["full_name"]
         verbose_name = "Cliente"
         verbose_name_plural = "Clientes"
+        constraints = [
+            models.UniqueConstraint(fields=["doc_type", "id_card"], name="client_unique_doc_id",
+                                    violation_error_message="Ya existe un cliente con ese tipo y número de documento.")
+        ]
+
+    @property
+    def full_id(self):
+        return f"{self.doc_type}-{self.id_card}"
 
     def __str__(self):
         return self.full_name
+
+    def save(self, *args, **kwargs):
+        if self.id_card:
+            self.id_card = self.id_card.replace(".", "").replace("-", "").strip()
+        super().save(*args, **kwargs)
 
     @property
     def initials(self):
@@ -59,25 +77,44 @@ class Client(models.Model):
                     seen.append(first)
         return ", ".join(seen)
 
-    def freeze(self, reason, days, start=None):
+    def freeze(self, reason, kind, amount=None, start=None, user=None):
         start = start or date.today()
         self.status = self.Status.FROZEN
         self.save(update_fields=["status"])
-        self.freezes.create(reason=reason, days=days, start_date=start,
-                            end_date=start + timedelta(days=days))
-        for m in self.memberships.all():
-            if m.end_date:
-                m.end_date = m.end_date + timedelta(days=days)
-                m.save()
+
+        if kind == Freeze.Kind.DAYS:
+            days = amount
+            end_date = start + timedelta(days=days)
+        elif kind == Freeze.Kind.MONTHS:
+            end_date = start + relativedelta(months=amount)
+            days = (end_date - start).days
+        else:
+            days, end_date = None, None
+
+        self.freezes.create(reason=reason, kind=kind, days=days,
+                            start_date=start, end_date=end_date, created_by=user)
+        if days:
+            for m in self.memberships.all():
+                if m.end_date:
+                    m.end_date = m.end_date + timedelta(days=days)
+                    m.save()
         return self
 
     def unfreeze(self):
+        freeze = self.current_freeze
+        if freeze and freeze.kind == Freeze.Kind.INDEFINITE:
+            elapsed = (date.today() - freeze.start_date).days
+            if elapsed:
+                for m in self.memberships.all():
+                    if m.end_date:
+                        m.end_date = m.end_date + timedelta(days=elapsed)
+                        m.save()
         self.status = self.Status.ACTIVE
         self.save(update_fields=["status"])
         return self
 
 
-class Membership(models.Model):
+class Membership(CreatedByModel):
     client     = models.ForeignKey(Client, on_delete=models.CASCADE, related_name="memberships")
     plan       = models.ForeignKey(Plan, on_delete=models.PROTECT, related_name="memberships")
     start_date = models.DateField("Inicio", default=date.today)
@@ -119,12 +156,18 @@ class Membership(models.Model):
         super().save(*args, **kwargs)
 
 
-class Freeze(models.Model):
+class Freeze(CreatedByModel):
+    class Kind(models.TextChoices):
+        DAYS       = "DAYS",       "Días"
+        MONTHS     = "MONTHS",     "Meses"
+        INDEFINITE = "INDEFINITE", "Indefinido"
+
     client     = models.ForeignKey(Client, on_delete=models.CASCADE, related_name="freezes")
     reason     = models.CharField("Motivo", max_length=160)
-    days       = models.PositiveIntegerField("Días")
+    kind       = models.CharField("Tipo", max_length=10, choices=Kind.choices, default=Kind.DAYS)
+    days       = models.PositiveIntegerField("Días", null=True, blank=True)
     start_date = models.DateField("Desde")
-    end_date   = models.DateField("Hasta")
+    end_date   = models.DateField("Hasta", null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
