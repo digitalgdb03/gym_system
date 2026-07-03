@@ -1,0 +1,72 @@
+{% extends "base.html" %}
+{% load widget_tweaks %}
+{% block page_title %}Servicios{% endblock %}
+{% block page_sub %}Áreas que ofrece el gimnasio{% endblock %}
+{% block content %}
+
+<div class="toolbar">
+  <div class="section-note" style="margin:0">Áreas dinámicas: agrega las que ofrezca el gimnasio.</div>
+  <a class="btn btn-primary" href="{% url 'services:create' %}" style="margin-left:auto">+ Nueva área</a>
+</div>
+
+<div class="card"><div class="table-wrap"><table>
+  <thead><tr><th>Área de servicio</th><th>Tipo</th><th>Planes</th><th>Agenda</th><th></th></tr></thead>
+  <tbody>
+  {% for s in services %}
+    <tr>
+      <td data-label="Área de servicio"><span class="serv-color" style="background:{{ s.color }}"></span><b>{{ s.name }}</b></td>
+      <td data-label="Tipo">
+        {% if s.kind == 'OPEN' %}<span class="role-badge role-EMPLEADO">Acceso libre</span>
+        {% elif s.kind == 'GUIDED' %}<span class="role-badge role-INSTRUCTOR">Clase dirigida</span>
+        {% else %}<span class="role-badge role-CLIENTE">Mixto</span>{% endif %}
+      </td>
+      <td data-label="Planes">{{ s.plans.count }}</td>
+      <td data-label="Agenda">{% if s.kind == 'OPEN' %}<span style="color:var(--muted)">Siempre disponible</span>{% else %}{{ s.classes.count }} clases{% endif %}</td>
+      <td data-label="">
+        <div class="row-actions">
+          <a class="icon-btn" href="{% url 'services:update' s.pk %}" title="Editar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/></svg></a>
+          <a class="icon-btn del" href="{% url 'services:delete' s.pk %}" title="Eliminar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m2 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/></svg></a>
+        </div>
+      </td>
+    </tr>
+  {% empty %}<tr><td colspan="5" style="text-align:center;color:var(--muted)">Sin áreas.</td></tr>{% endfor %}
+  </tbody>
+</table></div></div>
+
+{% if show_form %}
+<div class="modal-overlay" data-close="{% url 'services:list' %}">
+  <div class="modal" role="dialog">
+    <h3 class="modal-title">{% if object %}Editar área{% else %}Nueva área{% endif %}</h3>
+    <form method="post">{% csrf_token %}
+      <div class="modal-body">
+        {% if form.non_field_errors %}<div class="msg error">{{ form.non_field_errors }}</div>{% endif %}
+        {% for field in form %}
+          <div class="field"><label>{{ field.label }}</label>{% render_field field class="input" %}
+            {% for e in field.errors %}<div class="msg error">{{ e }}</div>{% endfor %}</div>
+        {% endfor %}
+      </div>
+      <div class="modal-actions">
+        {% if object %}<a class="btn btn-danger" href="{% url 'services:delete' object.pk %}">Eliminar</a>{% endif %}
+        <a class="btn btn-ghost" href="{% url 'services:list' %}">Cancelar</a>
+        <button class="btn btn-primary">Guardar</button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endif %}
+
+{% if show_delete %}
+<div class="modal-overlay" data-close="{% url 'services:list' %}">
+  <div class="modal" role="dialog">
+    <h3 class="modal-title">Eliminar área</h3>
+    <div class="modal-body"><p>¿Eliminar <b>{{ object.name }}</b>?</p></div>
+    <form method="post">{% csrf_token %}
+      <div class="modal-actions">
+        <a class="btn btn-ghost" href="{% url 'services:list' %}">Cancelar</a>
+        <button class="btn btn-danger">Sí, eliminar</button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endif %}
+{% endblock %}

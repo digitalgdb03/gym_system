@@ -4,48 +4,51 @@ from django.db import models
 
 
 class Plan(models.Model):
-    class Duracion(models.TextChoices):
-        DIARIA  = "Diaria",  "Diaria"
-        SEMANAL = "Semanal", "Semanal"
-        MENSUAL = "Mensual", "Mensual"
+    class Duration(models.TextChoices):
+        DAILY   = "DAILY",   "Diaria"
+        WEEKLY  = "WEEKLY",  "Semanal"
+        MONTHLY = "MONTHLY", "Mensual"
 
-    area     = models.ForeignKey("services.Servicio", on_delete=models.PROTECT,
-                                 related_name="planes")
-    nombre   = models.CharField(max_length=120, blank=True,
-                                help_text="Opcional · nómbralo solo en combos")
-    duracion = models.CharField(max_length=10, choices=Duracion.choices,
-                                default=Duracion.MENSUAL)
-    usd_bcv     = models.DecimalField("Precio BCV (USD)", max_digits=8, decimal_places=2)
-    usd_divisas = models.DecimalField("Precio Divisas (USD)", max_digits=8, decimal_places=2)
-    incluye  = models.ManyToManyField("services.Servicio", blank=True,
-                                      related_name="incluido_en",
-                                      help_text="Áreas que cubre (combos)")
-    personalizado = models.BooleanField(default=False)
-    activo        = models.BooleanField(default=True)
+    class Currency(models.TextChoices):
+        BCV  = "BCV",  "Bs (BCV)"
+        CASH = "CASH", "Divisas ($)"
+
+    service    = models.ForeignKey("services.Service", on_delete=models.PROTECT, related_name="plans")
+    name       = models.CharField("Nombre", max_length=120, blank=True,
+                                  help_text="Opcional · nómbralo solo en combos")
+    duration   = models.CharField("Duración", max_length=10, choices=Duration.choices,
+                                  default=Duration.MONTHLY)
+    price_bcv  = models.DecimalField("Precio pagando en Bs (USD)", max_digits=8, decimal_places=2)
+    price_cash = models.DecimalField("Precio en divisas/efectivo $ (USD)", max_digits=8, decimal_places=2)
+    included_services = models.ManyToManyField("services.Service", blank=True,
+                                               related_name="included_in",
+                                               verbose_name="Áreas incluidas")
+    is_custom  = models.BooleanField("Personalizado", default=False)
+    is_active  = models.BooleanField("Activo", default=True)
 
     class Meta:
-        ordering = ["area__nombre", "duracion"]
+        ordering = ["service__name", "duration"]
         verbose_name = "Plan"
         verbose_name_plural = "Planes"
 
     def __str__(self):
-        return self.etiqueta
+        return self.label
 
     @property
-    def etiqueta(self):
-        return self.nombre or f"{self.area.nombre} · {self.duracion}"
+    def label(self):
+        return self.name or f"{self.service.name} · {self.get_duration_display()}"
 
     @property
-    def requiere_entrenador(self):
-        areas = self.incluye.all() if self.pk and self.incluye.exists() else [self.area]
-        return any(a.requiere_entrenador for a in areas)
+    def requires_trainer(self):
+        services = self.included_services.all() if self.pk and self.included_services.exists() else [self.service]
+        return any(s.requires_trainer for s in services)
 
-    def precio(self, moneda="BCV"):
-        return self.usd_divisas if moneda == "Divisas" else self.usd_bcv
+    def price(self, currency=Currency.BCV):
+        return self.price_cash if currency == self.Currency.CASH else self.price_bcv
 
-    def vence_desde(self, inicio):
-        if self.duracion == self.Duracion.DIARIA:
-            return inicio + timedelta(days=1)
-        if self.duracion == self.Duracion.SEMANAL:
-            return inicio + timedelta(days=7)
-        return inicio + relativedelta(months=1)
+    def end_date_from(self, start):
+        if self.duration == self.Duration.DAILY:
+            return start + timedelta(days=1)
+        if self.duration == self.Duration.WEEKLY:
+            return start + timedelta(days=7)
+        return start + relativedelta(months=1)

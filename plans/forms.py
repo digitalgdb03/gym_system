@@ -5,11 +5,9 @@ from .models import Plan
 class PlanForm(forms.ModelForm):
     class Meta:
         model = Plan
-        fields = ["area", "nombre", "duracion", "usd_bcv", "usd_divisas",
-                  "incluye", "personalizado"]
-        widgets = {
-            "incluye": forms.CheckboxSelectMultiple,
-        }
+        fields = ["service", "name", "duration", "price_bcv", "price_cash",
+                  "included_services", "is_custom"]
+        widgets = {"included_services": forms.CheckboxSelectMultiple}
         help_texts = {
-            "incluye": "Déjalo vacío para un plan simple; selecciona varias áreas para un combo.",
+            "included_services": "Déjalo vacío para un plan simple; selecciona varias áreas para un combo.",
         }

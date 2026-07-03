@@ -1,0 +1,26 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Ingresar · Zona Gym</title>
+  <link rel="stylesheet" href="{% static 'css/styles.css' %}">
+</head>
+<body>
+<div class="login-wrap">
+  <div class="login-left"><div class="login-card">
+    <div class="login-header">
+      <h1 class="login-name">ZONA GYM</h1>
+      <p class="login-tagline">Sistema de gestión administrativa</p>
+    </div>
+    {% if form.errors %}<div class="msg error">Usuario o contraseña incorrectos.</div>{% endif %}
+    <form method="post">{% csrf_token %}
+      <label>Usuario</label>{{ form.username }}
+      <label>Contraseña</label>{{ form.password }}
+      <button type="submit" class="btn btn-primary">Ingresar</button>
+    </form>
+  </div></div>
+  <div class="login-right"><img src="{% static 'images/zona_gym.png' %}" alt="Zona Gym" class="login-logo-big"></div>
+</div>
+</body>
+</html>

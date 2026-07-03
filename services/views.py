@@ -1,40 +1,53 @@
+from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin
-from django.contrib.messages.views import SuccessMessageMixin
+from django.db.models import ProtectedError
+from django.shortcuts import redirect
 from django.urls import reverse_lazy
 from django.views.generic import ListView, CreateView, UpdateView, DeleteView
-from django.contrib import messages
-from django.db.models import ProtectedError
-from .models import Servicio
-from .forms import ServicioForm
+
+from .models import Service
+from .forms import ServiceForm
+
+TEMPLATE = "services/services.html"
 
 
-class ServicioListView(LoginRequiredMixin, ListView):
-    model = Servicio
-    template_name = "services/list.html"
-    context_object_name = "servicios"
+class ServiceList(LoginRequiredMixin, ListView):
+    model = Service
+    template_name = TEMPLATE
+    context_object_name = "services"
 
 
-
-class ServicioCreateView(LoginRequiredMixin, SuccessMessageMixin, CreateView):
-    model = Servicio
-    form_class = ServicioForm
-    template_name = "services/form.html"
+class _Page(LoginRequiredMixin):
+    model = Service
+    form_class = ServiceForm
+    template_name = TEMPLATE
     success_url = reverse_lazy("services:list")
-    success_message = "Servicio creado correctamente."
+
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+        ctx["services"] = Service.objects.all()
+        ctx["show_form"] = True
+        return ctx
 
 
-class ServicioUpdateView(LoginRequiredMixin, SuccessMessageMixin, UpdateView):
-    model = Servicio
-    form_class = ServicioForm
-    template_name = "services/form.html"
+class ServiceCreate(_Page, CreateView):
+    pass
+
+
+class ServiceUpdate(_Page, UpdateView):
+    pass
+
+
+class ServiceDelete(LoginRequiredMixin, DeleteView):
+    model = Service
+    template_name = TEMPLATE
     success_url = reverse_lazy("services:list")
-    success_message = "Servicio actualizado."
 
-
-class ServicioDeleteView(LoginRequiredMixin, DeleteView):
-    model = Servicio
-    template_name = "services/confirm_delete.html"
-    success_url = reverse_lazy("services:list")
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+        ctx["services"] = Service.objects.all()
+        ctx["show_delete"] = True
+        return ctx
 
     def form_valid(self, form):
         try:

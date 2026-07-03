@@ -1,0 +1,120 @@
+{% extends "base.html" %}
+{% load widget_tweaks %}
+{% block page_title %}Horarios{% endblock %}
+{% block page_sub %}Calendario semanal de clases dirigidas{% endblock %}
+{% block content %}
+
+<div class="msg warning" style="margin-bottom:16px">Las áreas de <b>acceso libre</b> no se programan aquí; este calendario es solo para <b>clases dirigidas</b>.</div>
+<div class="toolbar">
+  <div class="cal-legend"><span><i class="lg-fija"></i> Fija</span><span><i class="lg-pers"></i> Personalizada</span></div>
+  <a class="btn btn-primary" href="{% url 'schedules:create' %}" style="margin-left:auto">+ Nueva clase</a>
+</div>
+
+<div class="card cal">
+  <!-- ESCRITORIO: rejilla semanal (sin cambios) -->
+  <div class="cal-desktop"><div class="cal-grid">
+    <div></div>
+    {% for value, label in days %}<div class="cal-head">{{ label }}</div>{% endfor %}
+    {% for row in grid %}
+      <div class="cal-time">{{ row.block }}</div>
+      {% for cell in row.cells %}
+      <div class="cal-cell {% if cell.full %}full{% endif %}">
+        {% for c in cell.classes %}
+          <a class="klass {% if c.kind == 'CUSTOM' %}klass-pers{% endif %}" style="background:{{ c.service.color }}" href="{% url 'schedules:update' c.pk %}">
+            <b>{{ c.service.name }}{% if c.kind == 'CUSTOM' %} · Pers.{% endif %}</b><span>{{ c.instructor_names }}</span>
+          </a>
+        {% endfor %}
+        {% if cell.full %}<div class="cap-note">cupo máx. (2)</div>
+        {% else %}<a class="add-here" href="{% url 'schedules:create' %}?day={{ cell.day }}&block={{ row.block|urlencode }}">+</a>{% endif %}
+      </div>
+      {% endfor %}
+    {% endfor %}
+  </div></div>
+
+  <!-- MOVIL: pastillas de dia + filas por bloque horario -->
+  <div class="cal-mobile">
+    <div class="pills cal-days" id="calDays">
+      {% for value, label in days %}
+        <button type="button" class="pill{% if forloop.first %} active{% endif %}" data-day="{{ value }}">{{ label }}</button>
+      {% endfor %}
+    </div>
+
+    {% for value, label in days %}
+    <div class="cal-day-panel" data-day="{{ value }}"{% if not forloop.first %} hidden{% endif %}>
+      {% for row in grid %}{% for cell in row.cells %}{% if cell.day == value and cell.classes %}
+        <div class="cal-row">
+          <div class="cal-row-time">{{ row.block }}</div>
+          <div class="cal-row-classes">
+            {% for c in cell.classes %}
+              <a class="klass {% if c.kind == 'CUSTOM' %}klass-pers{% endif %}" style="background:{{ c.service.color }}" href="{% url 'schedules:update' c.pk %}">
+                <b>{{ c.service.name }}{% if c.kind == 'CUSTOM' %} · Pers.{% endif %}</b><span>{{ c.instructor_names }}</span>
+              </a>
+            {% endfor %}
+          </div>
+        </div>
+      {% endif %}{% endfor %}{% endfor %}
+      <div class="cal-empty" hidden>Sin clases programadas este día.</div>
+    </div>
+    {% endfor %}
+  </div>
+</div>
+
+<script>
+  (function () {
+    var days = document.getElementById("calDays");
+    if (!days) return;
+    var panels = document.querySelectorAll(".cal-day-panel");
+
+    panels.forEach(function (p) {
+      if (!p.querySelector(".cal-row")) {
+        var e = p.querySelector(".cal-empty"); if (e) e.hidden = false;
+      }
+    });
+
+    days.addEventListener("click", function (ev) {
+      var b = ev.target.closest(".pill[data-day]"); if (!b) return;
+      days.querySelectorAll(".pill").forEach(function (x) { x.classList.remove("active"); });
+      b.classList.add("active");
+      var d = b.getAttribute("data-day");
+      panels.forEach(function (p) { p.hidden = (p.getAttribute("data-day") !== d); });
+    });
+  })();
+</script>
+
+{% if show_form %}
+<div class="modal-overlay" data-close="{% url 'schedules:calendar' %}">
+  <div class="modal" role="dialog">
+    <h3 class="modal-title">{% if object %}Editar clase{% else %}Nueva clase{% endif %}</h3>
+    <form method="post">{% csrf_token %}
+      <div class="modal-body">
+        {% if form.non_field_errors %}<div class="msg error">{{ form.non_field_errors }}</div>{% endif %}
+        {% for field in form %}
+          <div class="field"><label>{{ field.label }}</label>{% render_field field class="input" %}
+            {% for e in field.errors %}<div class="msg error">{{ e }}</div>{% endfor %}</div>
+        {% endfor %}
+      </div>
+      <div class="modal-actions">
+        {% if object %}<a class="btn btn-danger" href="{% url 'schedules:delete' object.pk %}">Eliminar</a>{% endif %}
+        <a class="btn btn-ghost" href="{% url 'schedules:calendar' %}">Cancelar</a>
+        <button class="btn btn-primary">Guardar</button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endif %}
+
+{% if show_delete %}
+<div class="modal-overlay" data-close="{% url 'schedules:calendar' %}">
+  <div class="modal" role="dialog">
+    <h3 class="modal-title">Eliminar clase</h3>
+    <div class="modal-body"><p>¿Eliminar la clase <b>{{ object }}</b>?</p></div>
+    <form method="post">{% csrf_token %}
+      <div class="modal-actions">
+        <a class="btn btn-ghost" href="{% url 'schedules:calendar' %}">Cancelar</a>
+        <button class="btn btn-danger">Sí, eliminar</button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endif %}
+{% endblock %}

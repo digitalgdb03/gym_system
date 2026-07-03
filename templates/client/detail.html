@@ -1,0 +1,107 @@
+{% extends "base.html" %}
+{% load widget_tweaks gym_extras %}
+{% block page_title %}{{ client.full_name }}{% endblock %}
+{% block content %}
+
+<div class="toolbar">
+  <a class="btn btn-ghost" href="{% url 'client:list' %}">← Volver</a>
+  <div style="margin-left:auto;display:flex;gap:10px">
+    <a class="btn btn-ghost" href="{% url 'client:update' client.pk %}">Editar</a>
+    {% if client.status == 'FROZEN' %}
+      <form method="post" action="{% url 'client:unfreeze' client.pk %}">{% csrf_token %}<button class="btn btn-ghost">Descongelar</button></form>
+    {% else %}
+      <a class="btn btn-ghost" href="?action=freeze">Congelar</a>
+    {% endif %}
+    <a class="btn btn-primary" href="?action=membership">+ Agregar plan</a>
+  </div>
+</div>
+
+<div class="profile-head card">
+  <div class="av-lg">{{ client.initials }}</div>
+  <div><h2>{{ client.full_name }}</h2>
+    <div class="profile-meta"><span class="badge {{ client.status|lower }}">{{ client.get_status_display }}</span> · {{ client.id_card }}</div></div>
+</div>
+
+{% if freeze %}
+<div class="card freeze-banner" style="margin-top:20px"><h3>Membresía congelada</h3>
+  <div class="freeze-grid">
+    <div><span>Motivo</span><b>{{ freeze.reason }}</b></div><div><span>Días</span><b>{{ freeze.days }}</b></div>
+    <div><span>Desde</span><b>{{ freeze.start_date }}</b></div><div><span>Hasta</span><b>{{ freeze.end_date }}</b></div>
+  </div>
+</div>
+{% endif %}
+
+<div class="card" style="margin-top:20px"><h3>Planes / servicios</h3>
+  <div class="table-wrap"><table>
+    <thead><tr><th>Servicio</th><th>Plan</th><th>Inicio</th><th>Vence</th><th>Entrenador</th><th></th></tr></thead>
+    <tbody>
+    {% for m in memberships %}
+      <tr>
+        <td><span class="serv-color" style="background:{{ m.plan.service.color }}"></span>{{ m.plan.label }}</td>
+        <td>{{ m.plan.get_duration_display }}{% if m.is_custom %} · pers.{% endif %}</td>
+        <td>{{ m.start_date }}</td><td>{{ m.end_date|default:"—" }}</td>
+        <td>{{ m.trainer.full_name|default:"—" }}</td>
+        <td style="text-align:right">
+          <form method="post" action="{% url 'client:membership_remove' m.pk %}" onsubmit="return confirm('¿Quitar este plan?')">{% csrf_token %}
+            <button class="icon-btn del" title="Quitar">🗑</button></form>
+        </td>
+      </tr>
+    {% empty %}<tr><td colspan="6">Sin planes. Usa “Agregar plan”.</td></tr>{% endfor %}
+    </tbody>
+  </table></div>
+</div>
+
+<div class="card" style="margin-top:20px"><h3>Historial de pagos</h3>
+  <div class="table-wrap"><table>
+    <thead><tr><th>Plan</th><th>Monto</th><th>Método</th><th>Fecha</th></tr></thead>
+    <tbody>
+    {% for p in payments %}
+      <tr><td>{{ p.plan.label }}</td><td><span class="usd">${{ p.amount_usd }}</span></td><td>{{ p.get_method_display }}</td><td>{{ p.created_at|date:"d/m/Y" }}</td></tr>
+    {% empty %}<tr><td colspan="4">Sin pagos.</td></tr>{% endfor %}
+    </tbody>
+  </table></div>
+</div>
+
+{% if show_membership %}
+<div class="modal-overlay" data-close="{% url 'client:detail' client.pk %}">
+  <div class="modal" role="dialog">
+    <h3 class="modal-title">Agregar plan</h3>
+    <form method="post" action="{% url 'client:membership_add' client.pk %}">{% csrf_token %}
+      <div class="modal-body">
+        {% if membership_form.non_field_errors %}<div class="msg error">{{ membership_form.non_field_errors }}</div>{% endif %}
+        {% for field in membership_form %}
+          <div class="field"><label>{{ field.label }}</label>{% render_field field class="input" %}
+            {% for e in field.errors %}<div class="msg error">{{ e }}</div>{% endfor %}</div>
+        {% endfor %}
+        <div class="section-note">Boxeo/MMA exige entrenador. En “personalizado” el vencimiento se calcula según el monto.</div>
+      </div>
+      <div class="modal-actions">
+        <a class="btn btn-ghost" href="{% url 'client:detail' client.pk %}">Cancelar</a>
+        <button class="btn btn-primary">Guardar</button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endif %}
+
+{% if show_freeze %}
+<div class="modal-overlay" data-close="{% url 'client:detail' client.pk %}">
+  <div class="modal" role="dialog">
+    <h3 class="modal-title">Congelar membresía</h3>
+    <form method="post" action="{% url 'client:freeze' client.pk %}">{% csrf_token %}
+      <div class="modal-body">
+        {% for field in freeze_form %}
+          <div class="field"><label>{{ field.label }}</label>{% render_field field class="input" %}
+            {% for e in field.errors %}<div class="msg error">{{ e }}</div>{% endfor %}</div>
+        {% endfor %}
+        <div class="section-note">Se extenderá el vencimiento de <b>todas</b> las membresías esos días.</div>
+      </div>
+      <div class="modal-actions">
+        <a class="btn btn-ghost" href="{% url 'client:detail' client.pk %}">Cancelar</a>
+        <button class="btn btn-primary">Congelar</button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endif %}
+{% endblock %}

@@ -2,4 +2,6 @@ from django.apps import AppConfig
 
 
 class PlansConfig(AppConfig):
-    name = 'plans'
+    default_auto_field = "django.db.models.BigAutoField"
+    name = "plans"
+    verbose_name = "Planes"

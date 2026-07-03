@@ -1,19 +1,67 @@
 {% extends "base.html" %}
 {% load widget_tweaks %}
 {% block page_title %}Configuración{% endblock %}
-{% block page_sub %}Tasa manual y datos del gimnasio{% endblock %}
-
+{% block page_sub %}Tasa BCV y datos del gimnasio{% endblock %}
 {% block content %}
-<form method="post" class="card" style="max-width:560px">
-  {% csrf_token %}
-  <h3>Datos del gimnasio y tasa</h3>
-  {% for field in form %}
-    <div class="field">
-      <label>{{ field.label }}</label>
-      {% render_field field class="input" %}
-      {% for error in field.errors %}<div class="msg error">{{ error }}</div>{% endfor %}
+
+<div class="grid cols-2" style="align-items:start">
+
+  <!-- Columna izquierda: tasa del dólar + historial -->
+  <div>
+    <div class="card" style="margin:0">
+      <h3>Tasa del dólar (manual)</h3>
+      <p class="section-note" style="margin-bottom:14px">Si no hay internet, ajusta aquí la tasa BCV manualmente. Se aplica a todos los montos en bolívares.</p>
+      <p class="section-note" style="margin-bottom:14px;color:#8b6f1f;background:#fff8e6;border-radius:9px;padding:8px 12px">Los <b>sábados y domingos</b> se aplica automáticamente la tasa del <b>lunes</b> (el BCV la publica el viernes). Por eso el fin de semana y el lunes comparten la misma tasa.</p>
+
+      {% if today_rate %}
+        <div class="field">
+          <label>Tasa actual (Bs por USD)</label>
+          <input class="input" type="number" value="{{ today_rate.rate }}" disabled>
+        </div>
+        <div class="msg" style="background:#eef1fb;color:#33406b;border-radius:9px;padding:10px 12px;margin-top:4px">
+          Ya hay una tasa registrada para hoy ({{ today_rate.get_source_display }}). No se puede modificar ni actualizar hasta mañana.
+        </div>
+      {% else %}
+        <form method="post" action="{% url 'configuration:save_rate' %}">{% csrf_token %}
+          <div class="field">
+            <label>Tasa actual (Bs por USD)</label>
+            <input class="input" type="number" step="0.01" min="0" name="rate" value="{{ suggested_rate }}" required>
+          </div>
+          <div style="display:flex;gap:8px;margin-top:6px;flex-wrap:wrap">
+            <button type="submit" class="btn btn-primary">Guardar tasa</button>
+            <a class="btn btn-ghost" href="{% url 'configuration:refresh_bcv' %}">↻ Actualizar desde BCV</a>
+          </div>
+        </form>
+      {% endif %}
     </div>
-  {% endfor %}
-  <button type="submit" class="btn btn-primary" style="margin-top:14px">Guardar</button>
-</form>
+
+    <div class="card" style="margin-top:20px">
+      <h3>Historial de tasas</h3>
+      <div class="table-wrap"><table>
+        <thead><tr><th>Fecha</th><th>Tasa (Bs/USD)</th><th>Origen</th></tr></thead>
+        <tbody>
+        {% for r in rates %}
+          <tr>
+            <td>{{ r.date|date:"d/m/Y" }}</td>
+            <td><b>{{ r.rate }}</b></td>
+            <td><span class="role-badge {% if r.source == 'AUTO' %}role-INSTRUCTOR{% else %}role-EMPLEADO{% endif %}">{{ r.get_source_display }}</span></td>
+          </tr>
+        {% empty %}<tr><td colspan="3" style="text-align:center;color:var(--muted)">Sin registros aún.</td></tr>{% endfor %}
+        </tbody>
+      </table></div>
+    </div>
+  </div>
+
+  <!-- Columna derecha: datos del gimnasio -->
+  <form method="post" class="card" style="margin:0">
+    {% csrf_token %}
+    <h3>Datos del gimnasio</h3>
+    {% for field in form %}
+      <div class="field"><label>{{ field.label }}</label>{% render_field field class="input" %}
+        {% for e in field.errors %}<div class="msg error">{{ e }}</div>{% endfor %}</div>
+    {% endfor %}
+    <button type="submit" class="btn btn-primary" style="margin-top:10px">Guardar</button>
+  </form>
+
+</div>
 {% endblock %}

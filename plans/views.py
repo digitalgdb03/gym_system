@@ -1,45 +1,54 @@
-from django.contrib.auth.decorators import login_required
 from django.contrib.auth.mixins import LoginRequiredMixin
-from django.contrib.messages.views import SuccessMessageMixin
-from django.shortcuts import render
 from django.urls import reverse_lazy
-from django.views.generic import CreateView, UpdateView, DeleteView
+from django.views.generic import ListView, CreateView, UpdateView, DeleteView
 
-from services.models import Servicio
+from services.models import Service
 from .models import Plan
 from .forms import PlanForm
 
-
-@login_required
-def plan_list(request):
-    # Agrupado por área, como en la pantalla del demo
-    areas = Servicio.objects.prefetch_related("planes").order_by("nombre")
-    return render(request, "plans/list.html", {"areas": areas})
+TEMPLATE = "plans/plans.html"
 
 
-class _PlanFormMixin(LoginRequiredMixin, SuccessMessageMixin):
+class PlanList(LoginRequiredMixin, ListView):
+    template_name = TEMPLATE
+    context_object_name = "areas"
+    queryset = Service.objects.prefetch_related("plans")
+
+
+class _Page(LoginRequiredMixin):
     model = Plan
     form_class = PlanForm
-    template_name = "plans/form.html"
+    template_name = TEMPLATE
     success_url = reverse_lazy("plans:list")
+
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+        ctx["areas"] = Service.objects.prefetch_related("plans")
+        ctx["show_form"] = True
+        return ctx
 
     def form_valid(self, form):
         response = super().form_valid(form)
-        # Si no marcó áreas en un combo, "incluye" = su propia área
-        if not self.object.incluye.exists():
-            self.object.incluye.set([self.object.area])
+        if not self.object.included_services.exists():
+            self.object.included_services.set([self.object.service])
         return response
 
 
-class PlanCreateView(_PlanFormMixin, CreateView):
-    success_message = "Plan creado."
+class PlanCreate(_Page, CreateView):
+    pass
 
 
-class PlanUpdateView(_PlanFormMixin, UpdateView):
-    success_message = "Plan actualizado."
+class PlanUpdate(_Page, UpdateView):
+    pass
 
 
-class PlanDeleteView(LoginRequiredMixin, DeleteView):
+class PlanDelete(LoginRequiredMixin, DeleteView):
     model = Plan
-    template_name = "plans/confirm_delete.html"
+    template_name = TEMPLATE
     success_url = reverse_lazy("plans:list")
+
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+        ctx["areas"] = Service.objects.prefetch_related("plans")
+        ctx["show_delete"] = True
+        return ctx

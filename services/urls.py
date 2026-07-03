@@ -4,8 +4,8 @@ from . import views
 app_name = "services"
 
 urlpatterns = [
-    path("", views.ServicioListView.as_view(), name="list"),
-    path("nuevo/", views.ServicioCreateView.as_view(), name="create"),
-    path("<int:pk>/editar/", views.ServicioUpdateView.as_view(), name="update"),
-    path("<int:pk>/eliminar/", views.ServicioDeleteView.as_view(), name="delete"),
+    path("", views.ServiceList.as_view(), name="list"),
+    path("nueva/", views.ServiceCreate.as_view(), name="create"),
+    path("<int:pk>/editar/", views.ServiceUpdate.as_view(), name="update"),
+    path("<int:pk>/eliminar/", views.ServiceDelete.as_view(), name="delete"),
 ]

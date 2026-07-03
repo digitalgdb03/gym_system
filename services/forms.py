@@ -1,11 +1,9 @@
 from django import forms
-from .models import Servicio
+from .models import Service
 
 
-class ServicioForm(forms.ModelForm):
+class ServiceForm(forms.ModelForm):
     class Meta:
-        model = Servicio
-        fields = ["nombre", "tipo", "color", "activo"]
-        widgets = {
-            "color": forms.TextInput(attrs={"type": "color"}),
-        }
+        model = Service
+        fields = ["name", "kind", "color", "requires_trainer", "is_active"]
+        widgets = {"color": forms.TextInput(attrs={"type": "color"})}

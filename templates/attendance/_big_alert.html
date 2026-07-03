@@ -1,0 +1,23 @@
+<div style="background:#fff;border-radius:24px;padding:48px 40px;text-align:center;
+            box-shadow:0 20px 50px rgba(0,0,0,.5);border-bottom:20px solid {{ color }};width:90%;max-width:620px">
+  <div style="font-size:92px;line-height:1;margin-bottom:14px">{{ icon }}</div>
+  <h2 style="margin:0 0 8px;font-size:2.4rem;color:#333">{{ just_marked.name }}</h2>
+  <p style="margin:0;font-size:1.3rem;color:#666">C.I: {{ just_marked.id_card }}</p>
+  <div style="font-size:3.4rem;font-weight:900;margin:16px 0 6px;color:{{ color }};text-transform:uppercase;letter-spacing:3px">
+    {{ just_marked.status_display }}
+  </div>
+  {% if just_marked.message %}
+    <p style="margin:12px auto 0;max-width:460px;font-size:1.15rem;color:#555;line-height:1.45">{{ just_marked.message }}</p>
+  {% else %}
+    <div style="display:flex;gap:14px;justify-content:center;flex-wrap:wrap;margin-top:14px">
+      <div style="background:#f4f5fb;border-radius:12px;padding:10px 18px;min-width:170px">
+        <div style="font-size:11px;letter-spacing:1px;text-transform:uppercase;color:#8b8fa6;font-weight:800">Plan</div>
+        <div style="font-size:16px;color:#333;font-weight:700;margin-top:3px">{{ just_marked.plan|default:"Sin plan" }}</div>
+      </div>
+      <div style="background:#f4f5fb;border-radius:12px;padding:10px 18px;min-width:170px">
+        <div style="font-size:11px;letter-spacing:1px;text-transform:uppercase;color:#8b8fa6;font-weight:800">Instructor</div>
+        <div style="font-size:16px;color:#333;font-weight:700;margin-top:3px">{{ just_marked.trainer|default:"—" }}</div>
+      </div>
+    </div>
+  {% endif %}
+</div>
