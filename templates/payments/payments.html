@@ -4,12 +4,26 @@
 {% block page_sub %}Movimientos del día{% endblock %}
 {% block content %}
 
+<style>
+  .rate-box{ display: none !important; }
+
+  @media (max-width: 760px){
+    .stats-top{ flex-direction: column; }
+    .stats-top > .grid{ grid-template-columns: 1fr !important; }
+    .stats-top .tasa-bcv-card{
+      flex: 0 0 auto !important;
+      min-height: 0 !important;
+      width: 100%;
+    }
+  }
+</style>
+
 <div class="toolbar">
   <div class="section-note" style="margin:0">Registra pagos asociados a un cliente y su plan.</div>
   <a class="btn btn-primary" href="{% url 'payments:create' %}" style="margin-left:auto">+ Registrar pago</a>
 </div>
 
-<div style="display:flex; gap:20px; align-items:stretch; flex-wrap:wrap; margin-bottom:20px;">
+<div class="stats-top" style="display:flex; gap:20px; align-items:stretch; flex-wrap:wrap; margin-bottom:20px;">
   <div class="grid" style="flex:1; min-width:280px; margin:0; display:grid; grid-template-columns:repeat(3,1fr); gap:20px;">
     <div class="card stat">
       <div class="ico tint-y"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20"/></svg></div>

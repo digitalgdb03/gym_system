@@ -4,8 +4,32 @@
 {% block page_sub %}Resumen del día{% endblock %}
 {% block content %}
 
+<style>
+  /* Ocultar la Tasa BCV del topbar SOLO en el dashboard (ya existe la grande abajo) */
+  .rate-box{ display: none !important; }
+  
+  /* Dashboard responsive: en movil apila todo en una sola columna,
+     con la Tasa BCV de primera (arriba) y los stats debajo, uno por fila. */
+  @media (max-width: 760px){
+    .dash-top{ flex-direction: column; }
+
+    .dash-top .tasa-bcv-card{
+      order: -1;                  /* Tasa primero */
+      flex: 0 0 auto !important;
+      min-height: 0 !important;
+      width: 100%;
+    }
+
+    .dash-top .dashboard-stats{
+      flex: 0 0 auto !important;
+      grid-template-columns: 1fr !important;   /* un stat por fila */
+      grid-template-rows: auto !important;     /* anula el 1fr 1fr fijo */
+    }
+  }
+</style>
+
 <!-- Fila superior: 4 tarjetas (2x2) + tarjeta grande de la Tasa BCV -->
-<div style="display:flex; gap:20px; align-items:stretch; flex-wrap:wrap;">
+<div class="dash-top" style="display:flex; gap:20px; align-items:stretch; flex-wrap:wrap;">
   <div class="grid cols-2 dashboard-stats" style="flex:1; margin:0; display:grid; grid-template-rows:1fr 1fr; gap:20px;">
 
     <div class="card stat">
