@@ -1,4 +1,9 @@
-"""Obtención y registro de la tasa BCV en la tabla ExchangeRate (fuente única)."""
+"""Obtención y registro de la tasa BCV en la tabla ExchangeRate (fuente única).
+
+- Días hábiles: se guarda bajo el día (el viernes conserva su propia tasa) y solo
+  se auto-actualiza antes de la hora de publicación del BCV.
+- Sábado y domingo: se guardan bajo la fecha del próximo lunes (regla del BCV).
+"""
 import json
 import time
 import urllib.request
@@ -51,13 +56,20 @@ def fetch_bcv_rate(timeout=5):
 
 
 def update_today_rate(force=False):
-    """Guarda la tasa de hoy desde la API. Devuelve la fila o None si no se obtuvo."""
+    """Guarda la tasa del día (bajo su fecha efectiva). Devuelve la fila o None.
+
+    En días hábiles no actualiza automáticamente después de la hora de publicación
+    del BCV, para que el viernes conserve su tasa y no capture la del lunes.
+    """
     global _last_attempt
-    from django.utils import timezone
     from .models import ExchangeRate
 
-    today = timezone.localdate()
-    existing = ExchangeRate.objects.filter(date=today).first()
+    # Protección: en día hábil por la tarde no auto-actualizamos (salvo force manual).
+    if not force and not ExchangeRate.can_auto_update():
+        return ExchangeRate.for_today()
+
+    eff = ExchangeRate.effective_date()          # hoy, o el lunes si es finde
+    existing = ExchangeRate.objects.filter(date=eff).first()
     if existing and not force:
         return existing
     if not force and (time.time() - _last_attempt) < 1800:   # no reintentar antes de 30 min
@@ -69,16 +81,15 @@ def update_today_rate(force=False):
         return None
 
     obj, _ = ExchangeRate.objects.update_or_create(
-        date=today, defaults={"rate": rate, "source": ExchangeRate.Source.AUTO}
+        date=eff, defaults={"rate": rate, "source": ExchangeRate.Source.AUTO}
     )
     return obj
 
 
 def set_manual_rate(rate):
-    """Registra la tasa de hoy como MANUAL (edición a mano en Configuración)."""
-    from django.utils import timezone
+    """Registra la tasa a mano bajo su fecha efectiva (sáb/dom -> lunes; viernes -> viernes)."""
     from .models import ExchangeRate
+    eff = ExchangeRate.effective_date()
     return ExchangeRate.objects.update_or_create(
-        date=timezone.localdate(),
-        defaults={"rate": Decimal(str(rate)), "source": ExchangeRate.Source.MANUAL},
+        date=eff, defaults={"rate": Decimal(str(rate)), "source": ExchangeRate.Source.MANUAL},
     )[0]
