@@ -1,19 +1,31 @@
 {% extends "base.html" %}
-{% load widget_tweaks %}
+{% load widget_tweaks gym_extras %}
 {% block page_title %}Mi perfil{% endblock %}
 {% block page_sub %}Tus datos y contraseña{% endblock %}
 {% block content %}
 
-<div class="card" style="max-width:480px">
+<div class="card account-card" style="max-width:640px; margin:0 auto;">
+  <div class="profile-head" style="margin-bottom:22px">
+    <div class="av-lg">{{ user.full_name|default:user.username|initials }}</div>
+    <div>
+      <h2>{{ user.full_name|default:user.username }}</h2>
+      <div class="profile-meta">{{ user.email|default:"—" }}</div>
+    </div>
+  </div>
+
   <h3>Datos de la cuenta</h3>
   <form method="post">{% csrf_token %}
     {% if form.non_field_errors %}<div class="msg error">{{ form.non_field_errors }}</div>{% endif %}
-    {% for field in form %}
-      <div class="field"><label>{{ field.label }}</label>{% render_field field class="input" %}
-        {% if field.help_text %}<div class="field-hint">{{ field.help_text }}</div>{% endif %}
-        {% for e in field.errors %}<div class="msg error">{{ e }}</div>{% endfor %}</div>
-    {% endfor %}
-    <button type="submit" class="btn btn-primary" style="margin-top:10px">Guardar</button>
+    <div class="account-fields">
+      {% for field in form %}
+        <div class="field {% if field.name == 'phone' %}field-wide{% endif %}">
+          <label>{{ field.label }}</label>{% render_field field class="input" %}
+          {% if field.help_text %}<div class="field-hint">{{ field.help_text }}</div>{% endif %}
+          {% for e in field.errors %}<div class="msg error">{{ e }}</div>{% endfor %}
+        </div>
+      {% endfor %}
+    </div>
+    <button type="submit" class="btn btn-primary" style="margin-top:16px">Guardar</button>
   </form>
 </div>
 {% endblock %}

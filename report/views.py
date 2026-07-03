@@ -11,6 +11,7 @@ from client.models import Client
 from configuration.models import GymConfig
 from payments.models import Payment
 from schedules.models import GymClass
+from user.models import User
 
 DAY_SHORT = ["Lu", "Ma", "Mi", "Ju", "Vi", "Sá", "Do"]      # weekday(): lunes = 0
 METHOD_ABBR = {"CASH_USD": "Efec. $", "CASH_BS": "Efec. Bs", "MOBILE": "P. Móvil",
@@ -110,9 +111,25 @@ def reports(request):
     by_area = [{"label": r["plan__service__name"], "count": r["n"], "total": r["t"]}
                for r in qs.values("plan__service__name").annotate(n=Count("id"), t=Sum("amount_usd"))]
 
+    staff_stats = []
+    for u in User.objects.all():
+        payments_qs = Payment.objects.filter(created_by=u, created_at__date__gte=start)
+        stats = {
+            "name": u.full_name or u.username,
+            "role": u.get_role_display(),
+            "clients": Client.objects.filter(created_by=u, created_at__date__gte=start).count(),
+            "payments": payments_qs.count(),
+            "amount": payments_qs.aggregate(s=Sum("amount_usd"))["s"] or 0,
+            "attendances": Attendance.objects.filter(created_by=u, check_in__date__gte=start).count(),
+        }
+        stats["total_actions"] = stats["clients"] + stats["payments"] + stats["attendances"]
+        staff_stats.append(stats)
+    staff_stats.sort(key=lambda s: s["total_actions"], reverse=True)
+
     context = {
         "period": period, "chart_title": chart_title, "serie": _with_pct(serie),
         "total": total, "count": count, "avg": avg,
         "by_method": by_method, "by_area": by_area,
+        "staff_stats": staff_stats,
     }
     return render(request, "report/reports.html", context)

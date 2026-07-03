@@ -241,6 +241,31 @@
           timer = setTimeout(function () { input.form.submit(); }, 450);
         });
       });
+
+      // Boton "X" para borrar de una vez el texto escrito, en todos los
+      // buscadores de la app (se agrega automaticamente a cada form.search).
+      var allSearchForms = document.querySelectorAll("form.search");
+      Array.prototype.forEach.call(allSearchForms, function (form) {
+        var input = form.querySelector('input[name="q"]');
+        if (!input) return;
+        var clearBtn = document.createElement("button");
+        clearBtn.type = "button";
+        clearBtn.className = "search-clear";
+        clearBtn.setAttribute("aria-label", "Borrar búsqueda");
+        clearBtn.textContent = "×";
+        form.appendChild(clearBtn);
+
+        function toggleClear() { clearBtn.style.display = input.value ? "flex" : "none"; }
+        toggleClear();
+        input.addEventListener("input", toggleClear);
+
+        clearBtn.addEventListener("click", function () {
+          input.value = "";
+          toggleClear();
+          input.focus();
+          input.dispatchEvent(new Event("input", { bubbles: true }));
+        });
+      });
     })();
 
     // Mensajes de exito/error: aparecen como notificaciones flotantes y

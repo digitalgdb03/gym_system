@@ -46,4 +46,22 @@
     <tbody>{% for r in by_area %}<tr><td>{{ r.label }}</td><td>{{ r.count }}</td><td><span class="usd">${{ r.total|floatformat:2 }}</span><div class="bs">Bs {{ r.total|bs }}</div></td></tr>{% empty %}<tr><td colspan="3" style="text-align:center">Sin datos.</td></tr>{% endfor %}</tbody>
   </table></div></div>
 </div>
+
+<div class="card" style="margin-top:20px"><h3>Estadísticas por usuario</h3>
+  <div class="table-wrap"><table>
+    <thead><tr><th>Usuario</th><th>Rol</th><th>Clientes registrados</th><th>Pagos procesados</th><th>Monto procesado</th><th>Asistencias marcadas</th></tr></thead>
+    <tbody>
+    {% for s in staff_stats %}
+      <tr>
+        <td>{{ s.name }}</td>
+        <td>{{ s.role }}</td>
+        <td>{{ s.clients }}</td>
+        <td>{{ s.payments }}</td>
+        <td><span class="usd">${{ s.amount|floatformat:2 }}</span><div class="bs">Bs {{ s.amount|bs }}</div></td>
+        <td>{{ s.attendances }}</td>
+      </tr>
+    {% empty %}<tr><td colspan="6" style="text-align:center">Sin datos.</td></tr>{% endfor %}
+    </tbody>
+  </table></div>
+</div>
 {% endblock %}

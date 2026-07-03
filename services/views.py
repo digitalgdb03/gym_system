@@ -23,7 +23,7 @@ class ServiceList(LoginRequiredMixin, ListView):
 
     def get_queryset(self):
         q = self.request.GET.get("q", "").strip()
-        qs = Service.objects.all()
+        qs = Service.objects.order_by("-created_at")
         return qs.filter(name__icontains=q) if q else qs
 
 
@@ -35,7 +35,7 @@ class _Page(LoginRequiredMixin):
 
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
-        page = paginate(self.request, Service.objects.all())
+        page = paginate(self.request, Service.objects.order_by("-created_at"))
         ctx["services"] = page
         ctx["page_obj"] = page
         ctx["show_form"] = True
@@ -64,7 +64,7 @@ class ServiceDelete(LoginRequiredMixin, DeleteView):
 
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
-        page = paginate(self.request, Service.objects.all())
+        page = paginate(self.request, Service.objects.order_by("-created_at"))
         ctx["services"] = page
         ctx["page_obj"] = page
         ctx["show_delete"] = True

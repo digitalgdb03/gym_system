@@ -22,7 +22,7 @@ class PlanList(LoginRequiredMixin, ListView):
 
     def get_queryset(self):
         q = self.request.GET.get("q", "").strip()
-        qs = Service.objects.prefetch_related("plans")
+        qs = Service.objects.prefetch_related("plans").order_by("-created_at")
         if not q:
             return qs
         return qs.filter(Q(name__icontains=q) | Q(plans__name__icontains=q)).distinct()
@@ -36,7 +36,7 @@ class _Page(LoginRequiredMixin):
 
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
-        page = paginate(self.request, Service.objects.prefetch_related("plans"), per_page=8)
+        page = paginate(self.request, Service.objects.prefetch_related("plans").order_by("-created_at"), per_page=8)
         ctx["areas"] = page
         ctx["page_obj"] = page
         ctx["show_form"] = True
@@ -67,7 +67,7 @@ class PlanDelete(LoginRequiredMixin, DeleteView):
 
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
-        page = paginate(self.request, Service.objects.prefetch_related("plans"), per_page=8)
+        page = paginate(self.request, Service.objects.prefetch_related("plans").order_by("-created_at"), per_page=8)
         ctx["areas"] = page
         ctx["page_obj"] = page
         ctx["show_delete"] = True

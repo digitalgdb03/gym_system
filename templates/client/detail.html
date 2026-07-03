@@ -21,7 +21,7 @@
 <div class="profile-head card">
   <div class="av-lg">{{ client.initials }}</div>
   <div><h2>{{ client.full_name }}</h2>
-    <div class="profile-meta"><span class="badge {{ client.status|lower }}">{{ client.get_status_display }}</span> · {{ client.full_id }}</div>
+    <div class="profile-meta"><span class="badge {{ client.status_badge_class }}">{{ client.get_status_display }}</span> · {{ client.full_id }}</div>
     {% if client.created_by %}<div class="section-note" style="margin:4px 0 0">Registrado por {{ client.created_by.full_name }}</div>{% endif %}
   </div>
 </div>

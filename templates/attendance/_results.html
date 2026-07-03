@@ -5,11 +5,7 @@
     <tr>
       <td data-label="Cliente"><div class="cell-name"><div class="av {% cycle '' 'o' 'n' %}">{{ a.client.full_name|slice:":2"|upper }}</div><b>{{ a.client.full_name }}</b></div></td>
       <td data-label="Cédula">{{ a.client.full_id }}</td>
-      <td data-label="Estatus">
-        {% if a.client.status == 'OVERDUE' %}<span class="badge moroso">Moroso</span>
-        {% elif a.client.status == 'FROZEN' %}<span class="badge congelado">Congelado</span>
-        {% else %}<span class="badge activo">Activo</span>{% endif %}
-      </td>
+      <td data-label="Estatus"><span class="badge {{ a.client.status_badge_class }}">{{ a.client.get_status_display }}</span></td>
       <td data-label="Entrada">{{ a.check_in|date:"g:i A" }}</td>
       <td data-label="Salida">{{ a.check_out|date:"g:i A"|default:"—" }}</td>
       <td data-label="Ubicación">{% if a.is_inside %}<span class="badge activo">En el gimnasio</span>{% else %}<span class="badge congelado">Se retiró</span>{% endif %}</td>

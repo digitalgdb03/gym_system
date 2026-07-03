@@ -12,7 +12,7 @@
       </td>
       <td data-label="Planes">{% if c.plans_summary %}{{ c.plans_summary }}{% else %}<span style="color:var(--muted)">Sin plan</span>{% endif %}</td>
       <td data-label="Entrenador">{% if c.trainers_summary %}{{ c.trainers_summary }}{% else %}<span style="color:var(--muted)">—</span>{% endif %}</td>
-      <td data-label="Estado"><span class="badge {% if c.status == 'ACTIVE' %}activo{% elif c.status == 'FROZEN' %}congelado{% else %}moroso{% endif %}">{{ c.get_status_display }}</span></td>
+      <td data-label="Estado"><span class="badge {{ c.status_badge_class }}">{{ c.get_status_display }}</span></td>
       <td data-label="Teléfono">{{ c.phone|default:"—" }}</td>
       <td data-label="">
         <div class="row-actions">

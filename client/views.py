@@ -44,7 +44,7 @@ class ClientList(LoginRequiredMixin, ListView):
         q = self.request.GET.get("q", "").strip()
         qs = Client.objects.prefetch_related(
             "memberships__plan__service", "memberships__trainer"
-        )
+        ).order_by("-created_at")
         if not q:
             return qs
         q_id = q.replace(".", "").replace("-", "")
@@ -64,7 +64,7 @@ class ClientCreate(LoginRequiredMixin, View):
     template_name = TEMPLATE
 
     def _ctx(self, form, membership_form):
-        page = paginate(self.request, Client.objects.all())
+        page = paginate(self.request, Client.objects.order_by("-created_at"))
         return {
             "clients": page,
             "page_obj": page,
@@ -115,7 +115,7 @@ class ClientUpdate(LoginRequiredMixin, UpdateView):
         if self._from() == "detail":
             ctx.update(detail_context(self.object))
         else:
-            page = paginate(self.request, Client.objects.all())
+            page = paginate(self.request, Client.objects.order_by("-created_at"))
             ctx["clients"] = page
             ctx["page_obj"] = page
         return ctx
@@ -136,7 +136,7 @@ class ClientDelete(LoginRequiredMixin, DeleteView):
 
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
-        page = paginate(self.request, Client.objects.all())
+        page = paginate(self.request, Client.objects.order_by("-created_at"))
         ctx["clients"] = page
         ctx["page_obj"] = page
         ctx["show_delete"] = True
@@ -214,7 +214,7 @@ def client_freeze(request, pk):
         return redirect(_back_url(frm, client))
 
     if frm == "list":
-        page = paginate(request, Client.objects.all())
+        page = paginate(request, Client.objects.order_by("-created_at"))
         ctx = {"clients": page, "page_obj": page}
         ctx.update(_freeze_ctx(client, form, "list"))
         return render(request, TEMPLATE, ctx)

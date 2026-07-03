@@ -34,7 +34,7 @@ class StaffList(LoginRequiredMixin, ListView):
         return ["user/_results.html"] if is_ajax(self.request) else [TEMPLATE]
 
     def get_queryset(self):
-        qs = User.objects.filter(is_superuser=False).order_by("full_name")
+        qs = User.objects.filter(is_superuser=False).order_by("-date_joined")
         role = self.request.GET.get("role")
         if role in dict(User.Role.choices):
             qs = qs.filter(role=role)
@@ -53,7 +53,7 @@ class _Page(LoginRequiredMixin):
 
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
-        page = paginate(self.request, User.objects.filter(is_superuser=False).order_by("full_name"))
+        page = paginate(self.request, User.objects.filter(is_superuser=False).order_by("-date_joined"))
         ctx["staff"] = page
         ctx["page_obj"] = page
         ctx["show_form"] = True
@@ -88,7 +88,7 @@ class StaffDelete(LoginRequiredMixin, DeleteView):
 
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
-        page = paginate(self.request, User.objects.order_by("full_name"))
+        page = paginate(self.request, User.objects.order_by("-date_joined"))
         ctx["staff"] = page
         ctx["page_obj"] = page
         ctx["show_delete"] = True

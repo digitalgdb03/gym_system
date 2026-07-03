@@ -53,6 +53,11 @@ class Client(CreatedByModel):
         return "".join(w[0] for w in self.full_name.split()[:2]).upper()
 
     @property
+    def status_badge_class(self):
+        return {self.Status.ACTIVE: "activo", self.Status.FROZEN: "congelado",
+                self.Status.OVERDUE: "moroso"}[self.status]
+
+    @property
     def current_freeze(self):
         return self.freezes.first() if self.status == self.Status.FROZEN else None
     

@@ -20,8 +20,8 @@ class Plan(CreatedByModel):
                                   help_text="Opcional · nómbralo solo en combos")
     duration   = models.CharField("Duración", max_length=10, choices=Duration.choices,
                                   default=Duration.MONTHLY)
-    price_bcv  = models.DecimalField("Precio pagando en Bs (USD)", max_digits=8, decimal_places=2)
-    price_cash = models.DecimalField("Precio en divisas/efectivo $ (USD)", max_digits=8, decimal_places=2)
+    price_bcv  = models.DecimalField("Precio en dólares BCV", max_digits=8, decimal_places=2)
+    price_cash = models.DecimalField("Precio en divisas/efectivo (USD)", max_digits=8, decimal_places=2)
     included_services = models.ManyToManyField("services.Service", blank=True,
                                                related_name="included_in",
                                                verbose_name="Áreas incluidas")

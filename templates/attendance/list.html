@@ -6,44 +6,46 @@
 <style>
   .rate-box{ display: none !important; }
 
-  @media (max-width: 760px){
-    .stats-top{ flex-direction: column; }
-    .stats-top > .grid{ grid-template-columns: 1fr !important; }
-    .stats-top .tasa-bcv-card{
-      flex: 0 0 auto !important;
-      min-height: 0 !important;
-      width: 100%;
-    }
+  .attendance-top .tasa-bcv-card{ padding: 32px 40px; }
+  .attendance-top .tasa-bcv-card-content h3{ font-size: 15px; margin-bottom: 10px; }
+  .attendance-top .tasa-bcv-card-content .val{ font-size: 76px; }
+  .attendance-top .tasa-bcv-card-content .val small{ font-size: 26px; }
+  @media (max-width: 640px){
+    .attendance-top .tasa-bcv-card{ padding: 24px 28px; }
+    .attendance-top .tasa-bcv-card-content .val{ font-size: 52px; }
+    .attendance-top .tasa-bcv-card-content .val small{ font-size: 20px; }
   }
 </style>
 
-<div class="toolbar">
-  <form method="post" action="{% url 'attendance:mark' %}" class="doc-entry">{% csrf_token %}
-    <select name="doc_type" title="Tipo de documento">
-      {% for t in doc_types %}<option value="{{ t }}">{{ t }}-</option>{% endfor %}
-    </select>
-    <input name="number" placeholder="Número de cédula (ej: 25.481.230)" autocomplete="off" autofocus>
-    <button class="btn btn-primary">Marcar entrada</button>
-  </form>
-</div>
+<div class="grid cols-2 attendance-top" style="align-items:stretch; margin-bottom:20px;">
+  <div style="display:flex; flex-direction:column; gap:20px;">
+    <div class="card" style="margin:0;">
+      <form method="post" action="{% url 'attendance:mark' %}" class="doc-entry" style="margin:0;">{% csrf_token %}
+        <select name="doc_type" title="Tipo de documento">
+          {% for t in doc_types %}<option value="{{ t }}">{{ t }}-</option>{% endfor %}
+        </select>
+        <input name="number" placeholder="Número de cédula (ej: 25.481.230)" autocomplete="off" autofocus>
+        <button class="btn btn-primary">Marcar entrada</button>
+      </form>
+    </div>
 
-<div class="stats-top" style="display:flex; gap:20px; align-items:stretch; flex-wrap:wrap; margin-bottom:20px;">
-  <div class="grid" style="flex:1; min-width:280px; margin:0; display:grid; grid-template-columns:repeat(3,1fr); gap:20px;">
-    <div class="card stat">
-      <div class="ico tint-o"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg></div>
-      <div class="label">En el gimnasio ahora</div><div class="value">{{ inside }}</div><div class="substat">clientes presentes</div>
-    </div>
-    <div class="card stat">
-      <div class="ico tint-b"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></div>
-      <div class="label">Asistencias de hoy</div><div class="value">{{ total }}</div><div class="substat">entradas registradas</div>
-    </div>
-    <div class="card stat">
-      <div class="ico tint-c"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 13h8V3H3zM13 21h8V11h-8zM13 3v6h8V3zM3 21h8v-6H3z"/></svg></div>
-      <div class="label">Clientes distintos</div><div class="value">{{ distinct }}</div><div class="substat">personas hoy</div>
+    <div class="grid cols-3" style="margin:0;">
+      <div class="card stat">
+        <div class="ico tint-o"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg></div>
+        <div class="label">En el gimnasio ahora</div><div class="value">{{ inside }}</div><div class="substat">clientes presentes</div>
+      </div>
+      <div class="card stat">
+        <div class="ico tint-b"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></div>
+        <div class="label">Asistencias de hoy</div><div class="value">{{ total }}</div><div class="substat">entradas registradas</div>
+      </div>
+      <div class="card stat">
+        <div class="ico tint-c"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 13h8V3H3zM13 21h8V11h-8zM13 3v6h8V3zM3 21h8v-6H3z"/></svg></div>
+        <div class="label">Clientes distintos</div><div class="value">{{ distinct }}</div><div class="substat">personas hoy</div>
+      </div>
     </div>
   </div>
 
-  <div class="tasa-bcv-card" style="flex:0 0 300px; margin:0; min-height:100%; max-width:none; justify-content:center; text-align:center;">
+  <div class="tasa-bcv-card" style="margin:0; max-width:none; justify-content:center; text-align:center;">
     <div class="tasa-bcv-card-content" style="text-align:center;">
       <h3>Tasa del Día</h3>
       <div class="val">{{ gym.bcv_rate|default:"—" }} <small>Bs</small></div>
