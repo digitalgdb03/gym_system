@@ -53,11 +53,13 @@
 
       /* En escritorio el menu no depende del boton: se oculta */
       #appRoot .menu-toggle{ display:none; }
+      #appRoot.no-anim .sidebar,
+      #appRoot.no-anim .main{ transition:none !important; }
     }
   </style>
 </head>
 <body>
-  <div class="app menu-open" id="appRoot">
+  <div class="app" id="appRoot">
     <div class="backdrop" id="backdrop"></div>
     <aside class="sidebar">
       <div class="brand">
@@ -176,7 +178,13 @@
         root.classList.toggle("menu-open");
       });
       if (backdrop) backdrop.addEventListener("click", function () { root.classList.remove("menu-open"); });
-      window.addEventListener("resize", init);
+      var rt;
+      window.addEventListener("resize", function () {
+        root.classList.add("no-anim");
+        init();
+        clearTimeout(rt);
+        rt = setTimeout(function () { root.classList.remove("no-anim"); }, 120);
+      });
     })();
 
     // Menu de usuario (perfil / config / cerrar sesion).
