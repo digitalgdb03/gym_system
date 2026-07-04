@@ -73,9 +73,11 @@
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 13h8V3H3zM13 21h8V11h-8zM13 3v6h8V3zM3 21h8v-6H3z"/></svg>
           <span class="lbl">Dashboard</span></button>
 
+        {% if user.has_full_access %}
         <button type="button" data-title="Usuarios" onclick="location.href='{% url 'user:list' %}'" class="{% if ns == 'user' %}active{% endif %}">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>
           <span class="lbl">Usuarios</span></button>
+        {% endif %}
 
         <button type="button" data-title="Clientes" onclick="location.href='{% url 'client:list' %}'" class="{% if ns == 'client' %}active{% endif %}">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
@@ -85,9 +87,11 @@
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
           <span class="lbl">Asistencia</span></button>
 
+        {% if user.has_full_access %}
         <button type="button" data-title="Servicios" onclick="location.href='{% url 'services:list' %}'" class="{% if ns == 'services' %}active{% endif %}">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8v8M18 8v8M3 10v4M21 10v4M6 12h12"/></svg>
           <span class="lbl">Servicios</span></button>
+        {% endif %}
 
         <button type="button" data-title="Planes" onclick="location.href='{% url 'plans:list' %}'" class="{% if ns == 'plans' %}active{% endif %}">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.59 13.41 13.42 20.6a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><circle cx="7" cy="7" r="1.5"/></svg>
@@ -101,9 +105,11 @@
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20"/></svg>
           <span class="lbl">Pagos</span></button>
 
+        {% if user.has_full_access %}
         <button type="button" data-title="Reportes" onclick="location.href='{% url 'report:reports' %}'" class="{% if vn == 'report:reports' %}active{% endif %}">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><rect x="7" y="11" width="3" height="6"/><rect x="12" y="7" width="3" height="10"/><rect x="17" y="13" width="3" height="4"/></svg>
           <span class="lbl">Reportes</span></button>
+        {% endif %}
 
       </nav>
       {% endwith %}
@@ -132,7 +138,9 @@
           <button class="avatar" id="avatarBtn" title="Cuenta">{{ user.full_name|default:user.username|initials }}</button>
           <div class="user-dropdown" id="userMenu" style="display:none">
             <button type="button" onclick="location.href='{% url 'user:profile' %}'">Mi perfil</button>
+            {% if user.has_full_access %}
             <button type="button" onclick="location.href='{% url 'configuration:edit' %}'">Configuración</button>
+            {% endif %}
             <form method="post" action="{% url 'user:logout' %}" style="margin:0">{% csrf_token %}
               <button type="submit" style="width:100%">Cerrar sesión</button>
             </form>

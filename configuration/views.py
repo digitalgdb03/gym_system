@@ -5,12 +5,14 @@ from django.contrib.auth.decorators import login_required
 from django.shortcuts import redirect, render
 from django.utils import timezone
 
+from user.permissions import full_access_required
 from .forms import GymInfoForm
 from .models import ExchangeRate, GymConfig
 from .rates import set_manual_rate, update_today_rate
 
 
 @login_required
+@full_access_required
 def edit(request):
     """Página de Configuración: datos del gimnasio + tasa manual + historial."""
     cfg = GymConfig.load()
@@ -34,6 +36,7 @@ def edit(request):
 
 
 @login_required
+@full_access_required
 def save_rate(request):
     """Guarda la tasa de HOY a mano. Bloquea si ya existe una para hoy."""
     if ExchangeRate.for_today():
@@ -54,6 +57,7 @@ def save_rate(request):
 
 
 @login_required
+@full_access_required
 def refresh_bcv(request):
     """Consulta la API del BCV. Bloquea si ya existe una tasa para hoy."""
     if ExchangeRate.for_today():

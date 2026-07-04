@@ -6,7 +6,9 @@
 <div class="toolbar">
   <a class="btn btn-ghost" href="{% url 'client:list' %}">← Volver</a>
   <div style="margin-left:auto;display:flex;gap:10px">
+    {% if user.has_full_access %}
     <a class="btn btn-ghost" href="{% url 'client:update' client.pk %}?from=detail">Editar</a>
+    {% endif %}
     {% if client.status == 'FROZEN' %}
       <form method="post" action="{% url 'client:unfreeze' client.pk %}">{% csrf_token %}
         <input type="hidden" name="from" value="detail">
@@ -14,7 +16,9 @@
     {% else %}
       <a class="btn btn-ghost" href="?action=freeze">Congelar</a>
     {% endif %}
+    {% if user.has_full_access %}
     <a class="btn btn-primary" href="?action=membership">+ Agregar plan</a>
+    {% endif %}
   </div>
 </div>
 
@@ -65,8 +69,10 @@
         <td>{{ m.start_date }}</td><td>{{ m.end_date|default:"—" }}</td>
         <td>{{ m.trainer.full_name|default:"—" }}</td>
         <td style="text-align:right">
+          {% if user.has_full_access %}
           <form method="post" action="{% url 'client:membership_remove' m.pk %}" onsubmit="return confirm('¿Quitar este plan?')">{% csrf_token %}
             <button class="icon-btn del" title="Quitar">🗑</button></form>
+          {% endif %}
         </td>
       </tr>
     {% empty %}<tr><td colspan="6">Sin planes. Usa “Agregar plan”.</td></tr>{% endfor %}

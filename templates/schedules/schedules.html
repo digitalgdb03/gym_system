@@ -20,9 +20,15 @@
       {% for cell in row.cells %}
       <div class="cal-cell {% if cell.full %}full{% endif %}">
         {% for c in cell.classes %}
+          {% if user.has_full_access %}
           <a class="klass {% if c.kind == 'CUSTOM' %}klass-pers{% endif %}" style="background:{{ c.service.color }}" href="{% url 'schedules:update' c.pk %}">
             <b>{{ c.service.name }}{% if c.kind == 'CUSTOM' %} · Pers.{% endif %}</b><span>{{ c.block_label }} · {{ c.instructor_names }}</span>
           </a>
+          {% else %}
+          <div class="klass {% if c.kind == 'CUSTOM' %}klass-pers{% endif %}" style="background:{{ c.service.color }}">
+            <b>{{ c.service.name }}{% if c.kind == 'CUSTOM' %} · Pers.{% endif %}</b><span>{{ c.block_label }} · {{ c.instructor_names }}</span>
+          </div>
+          {% endif %}
         {% endfor %}
         {% if cell.full %}<div class="cap-note">cupo máx. (2)</div>
         {% else %}<a class="add-here" href="{% url 'schedules:create' %}?day={{ cell.day }}&block={{ row.block|time:'H:i' }}">+</a>{% endif %}
@@ -46,9 +52,15 @@
           <div class="cal-row-time">{{ row.block_label }}</div>
           <div class="cal-row-classes">
             {% for c in cell.classes %}
+              {% if user.has_full_access %}
               <a class="klass {% if c.kind == 'CUSTOM' %}klass-pers{% endif %}" style="background:{{ c.service.color }}" href="{% url 'schedules:update' c.pk %}">
                 <b>{{ c.service.name }}{% if c.kind == 'CUSTOM' %} · Pers.{% endif %}</b><span>{{ c.block_label }} · {{ c.instructor_names }}</span>
               </a>
+              {% else %}
+              <div class="klass {% if c.kind == 'CUSTOM' %}klass-pers{% endif %}" style="background:{{ c.service.color }}">
+                <b>{{ c.service.name }}{% if c.kind == 'CUSTOM' %} · Pers.{% endif %}</b><span>{{ c.block_label }} · {{ c.instructor_names }}</span>
+              </div>
+              {% endif %}
             {% endfor %}
           </div>
         </div>

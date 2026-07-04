@@ -1,5 +1,7 @@
 from django import forms
 from configuration.form_mixins import PlaceholderChoiceMixin
+from payments.forms import PaymentForm
+from user.models import User
 from .models import Client, Membership, Freeze
 
 
@@ -16,6 +18,7 @@ class ClientForm(PlaceholderChoiceMixin, forms.ModelForm):
             del self.fields["status"]
         else:
             self.fields["id_card"].disabled = True
+            self.fields["doc_type"].disabled = True
 
     def clean_id_card(self):
         return (self.cleaned_data.get("id_card") or "").replace(".", "").replace("-", "").strip()
@@ -27,6 +30,26 @@ class MembershipForm(PlaceholderChoiceMixin, forms.ModelForm):
     class Meta:
         model = Membership
         fields = ["plan", "is_custom", "amount", "currency", "trainer"]
+
+
+class InitialPaymentForm(PaymentForm):
+    """El pago inicial de un cliente nuevo: mismo formulario y misma
+    lógica que Pagos (sin 'client', que aún no existe), más el
+    entrenador para áreas que lo requieren (Boxeo/MMA)."""
+    trainer = forms.ModelChoiceField(queryset=User.objects.filter(roles__contains=["INSTRUCTOR"]),
+                                      required=False, label="Entrenador")
+
+    class Meta(PaymentForm.Meta):
+        fields = ["plan", "trainer", "method", "amount_usd", "amount_bs", "is_custom"]
+
+    field_order = ["plan", "trainer", "method", "amount_usd", "amount_bs", "is_custom"]
+
+    def clean(self):
+        cleaned = super().clean()
+        plan = cleaned.get("plan")
+        if plan and plan.requires_trainer and not cleaned.get("trainer"):
+            self.add_error("trainer", "Asigna un entrenador (Boxeo/MMA).")
+        return cleaned
 
 
 class FreezeForm(forms.Form):

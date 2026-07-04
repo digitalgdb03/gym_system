@@ -29,8 +29,9 @@ class StaffForm(forms.ModelForm):
         else:
             self.fields["password1"].help_text = "Déjalo vacío para no cambiar la contraseña actual."
             self.fields["roles"].initial = self.instance.roles
-            self.fields["id_card"].disabled = True
-            self.fields["doc_type"].disabled = True
+            if not self.instance.is_instructor:
+                self.fields["id_card"].disabled = True
+                self.fields["doc_type"].disabled = True
 
     def clean_id_card(self):
         return (self.cleaned_data.get("id_card") or "").replace(".", "").replace("-", "").strip()

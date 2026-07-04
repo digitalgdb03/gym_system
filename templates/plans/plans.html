@@ -10,7 +10,9 @@
     <input name="q" value="{{ request.GET.q }}" placeholder="Buscar área o plan…">
   </form>
   <div class="section-note" style="margin:0">Cada plan pertenece a un área y una duración.</div>
+  {% if user.has_full_access %}
   <a class="btn btn-primary" href="{% url 'plans:create' %}" style="margin-left:auto">+ Nuevo plan</a>
+  {% endif %}
 </div>
 
 <div id="search-results">{% include "plans/_results.html" %}</div>

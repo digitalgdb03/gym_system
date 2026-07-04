@@ -7,9 +7,12 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse, reverse_lazy
 from django.views.generic import ListView, View, UpdateView, DeleteView
 
-from configuration.utils import is_ajax, paginate, plan_trainer_map_json
+from configuration.utils import is_ajax, paginate, plan_trainer_map_json, plan_prices_json
+from payments.models import Payment
+from payments.views import _renew_membership
+from user.permissions import FullAccessRequiredMixin, full_access_required
 from .models import Client, Membership, Freeze
-from .forms import ClientForm, MembershipForm, FreezeForm
+from .forms import ClientForm, MembershipForm, FreezeForm, InitialPaymentForm
 
 TEMPLATE = "client/client.html"
 
@@ -62,43 +65,58 @@ class ClientList(LoginRequiredMixin, ListView):
 
 class ClientCreate(LoginRequiredMixin, View):
     """Un cliente no puede registrarse sin al menos un plan: se crean
-    Client y Membership juntos, en una sola transacción."""
+    Client y Membership juntos, en una sola transacción, registrando
+    el pago inicial con el mismo flujo que se usa en Pagos."""
     template_name = TEMPLATE
 
-    def _ctx(self, form, membership_form):
+    def _ctx(self, form, payment_form):
         page = paginate(self.request, Client.objects.order_by("-created_at"))
         return {
             "clients": page,
             "page_obj": page,
             "show_form": True,
             "form": form,
-            "membership_form": membership_form,
+            "membership_form": payment_form,
             "plan_trainer_map_json": plan_trainer_map_json(),
+            "plan_prices_json": plan_prices_json(),
         }
 
     def get(self, request):
         return render(request, self.template_name,
-                      self._ctx(ClientForm(), MembershipForm()))
+                      self._ctx(ClientForm(), InitialPaymentForm()))
 
     def post(self, request):
         form = ClientForm(request.POST)
-        membership_form = MembershipForm(request.POST)
-        if form.is_valid() and membership_form.is_valid():
+        payment_form = InitialPaymentForm(request.POST)
+        if form.is_valid() and payment_form.is_valid():
             with transaction.atomic():
                 client = form.save(commit=False)
                 client.created_by = request.user
                 client.save()
-                m = membership_form.save(commit=False)
-                m.client = client
-                m.end_date = None
-                m.created_by = request.user
-                m.save()
+
+                plan = payment_form.cleaned_data["plan"]
+                payment = Payment.objects.create(
+                    client=client, plan=plan,
+                    method=payment_form.cleaned_data["method"],
+                    amount_usd=payment_form.cleaned_data["amount_usd"],
+                    amount_bs=payment_form.cleaned_data["amount_bs"],
+                    is_custom=payment_form.cleaned_data["is_custom"],
+                    created_by=request.user,
+                )
+                membership = _renew_membership(
+                    client, plan, user=request.user, is_custom=payment.is_custom,
+                    amount=payment.amount_usd, currency=payment.currency,
+                )
+                trainer = payment_form.cleaned_data.get("trainer")
+                if trainer:
+                    membership.trainer = trainer
+                    membership.save(update_fields=["trainer"])
             messages.success(request, "Cliente registrado.")
             return redirect("client:list")
-        return render(request, self.template_name, self._ctx(form, membership_form))
+        return render(request, self.template_name, self._ctx(form, payment_form))
 
 
-class ClientUpdate(LoginRequiredMixin, UpdateView):
+class ClientUpdate(LoginRequiredMixin, FullAccessRequiredMixin, UpdateView):
     """Edita un cliente sin sacarlo de la página desde la que se abrió
     (lista o perfil): se queda ahí al cancelar, guardar o si hay error."""
     model = Client
@@ -131,7 +149,7 @@ class ClientUpdate(LoginRequiredMixin, UpdateView):
         return response
 
 
-class ClientDelete(LoginRequiredMixin, DeleteView):
+class ClientDelete(LoginRequiredMixin, FullAccessRequiredMixin, DeleteView):
     model = Client
     template_name = TEMPLATE
     success_url = reverse_lazy("client:list")
@@ -178,6 +196,7 @@ def client_detail(request, pk):
 
 
 @login_required
+@full_access_required
 def membership_add(request, pk):
     client = get_object_or_404(Client, pk=pk)
     form = MembershipForm(request.POST or None)
@@ -195,6 +214,7 @@ def membership_add(request, pk):
 
 
 @login_required
+@full_access_required
 def membership_remove(request, pk):
     m = get_object_or_404(Membership, pk=pk)
     cid = m.client_id

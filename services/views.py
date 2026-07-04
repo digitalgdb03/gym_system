@@ -6,13 +6,14 @@ from django.urls import reverse_lazy
 from django.views.generic import ListView, CreateView, UpdateView, DeleteView
 
 from configuration.utils import is_ajax, paginate
+from user.permissions import FullAccessRequiredMixin
 from .models import Service
 from .forms import ServiceForm
 
 TEMPLATE = "services/services.html"
 
 
-class ServiceList(LoginRequiredMixin, ListView):
+class ServiceList(LoginRequiredMixin, FullAccessRequiredMixin, ListView):
     model = Service
     template_name = TEMPLATE
     context_object_name = "services"
@@ -27,7 +28,7 @@ class ServiceList(LoginRequiredMixin, ListView):
         return qs.filter(name__icontains=q) if q else qs
 
 
-class _Page(LoginRequiredMixin):
+class _Page(LoginRequiredMixin, FullAccessRequiredMixin):
     model = Service
     form_class = ServiceForm
     template_name = TEMPLATE
@@ -57,7 +58,7 @@ class ServiceUpdate(_Page, UpdateView):
     pass
 
 
-class ServiceDelete(LoginRequiredMixin, DeleteView):
+class ServiceDelete(LoginRequiredMixin, FullAccessRequiredMixin, DeleteView):
     model = Service
     template_name = TEMPLATE
     success_url = reverse_lazy("services:list")

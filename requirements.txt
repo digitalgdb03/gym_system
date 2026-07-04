@@ -17,3 +17,6 @@ gunicorn>=21.2
 
 # --- Utilidades de fechas (vencimientos, congelaciones) ---
 python-dateutil>=2.9
+
+# --- Generación de reportes en PDF ---
+reportlab>=4.0

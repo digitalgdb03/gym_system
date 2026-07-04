@@ -1,18 +1,31 @@
 {% extends "base.html" %}
 {% load gym_extras %}
 {% block page_title %}Reportes{% endblock %}
-{% block page_sub %}Ingresos por día, semana y mes{% endblock %}
+{% block page_sub %}
+  {% if tab == 'clientes' %}Listado de clientes{% elif tab == 'planes' %}Listado de planes{% elif tab == 'pagos' %}Listado de pagos{% else %}Ingresos por día, semana y mes{% endif %}
+{% endblock %}
 {% block content %}
 
-<div class="print-header"><div><b>Zona Gym</b><span>Reporte de ingresos · {{ chart_title }}</span></div></div>
+<div class="print-header"><div><b>Zona Gym</b><span>Reporte de {% if tab == 'clientes' %}clientes{% elif tab == 'planes' %}planes{% elif tab == 'pagos' %}pagos{% else %}ingresos · {{ chart_title }}{% endif %}</span></div></div>
 
 <div class="toolbar">
   <div class="pills">
-    <a class="pill {% if period == 'day' %}active{% endif %}" href="?period=day">Día</a>
-    <a class="pill {% if period == 'week' %}active{% endif %}" href="?period=week">Semana</a>
-    <a class="pill {% if period == 'month' %}active{% endif %}" href="?period=month">Mes</a>
+    <a class="pill {% if tab == 'resumen' %}active{% endif %}" href="?tab=resumen">Resumen</a>
+    <a class="pill {% if tab == 'clientes' %}active{% endif %}" href="?tab=clientes">Clientes</a>
+    <a class="pill {% if tab == 'planes' %}active{% endif %}" href="?tab=planes">Planes</a>
+    <a class="pill {% if tab == 'pagos' %}active{% endif %}" href="?tab=pagos">Pagos</a>
   </div>
-  <button class="btn btn-primary" style="margin-left:auto" onclick="window.print()">⤓ Descargar PDF</button>
+  <a class="btn btn-primary" style="margin-left:auto" href="{{ pdf_url }}">⤓ Descargar PDF</a>
+</div>
+
+{% if tab == 'resumen' %}
+
+<div class="toolbar">
+  <div class="pills">
+    <a class="pill {% if period == 'day' %}active{% endif %}" href="?tab=resumen&period=day">Día</a>
+    <a class="pill {% if period == 'week' %}active{% endif %}" href="?tab=resumen&period=week">Semana</a>
+    <a class="pill {% if period == 'month' %}active{% endif %}" href="?tab=resumen&period=month">Mes</a>
+  </div>
 </div>
 
 <div class="grid cols-3" style="margin-bottom:20px">
@@ -64,4 +77,147 @@
     </tbody>
   </table></div>{% include "_partials/pagination.html" %}
 </div>
+
+{% elif tab == 'clientes' %}
+
+<form method="get" class="toolbar" style="align-items:flex-end">
+  <input type="hidden" name="tab" value="clientes">
+  <div class="field" style="margin-bottom:0;min-width:220px">
+    <label>Nombre o cédula</label>
+    <input type="text" name="cli_q" value="{{ cli_q }}" placeholder="Buscar…">
+  </div>
+  <div class="field" style="margin-bottom:0;min-width:160px">
+    <label>Estado</label>
+    <select name="cli_status">
+      <option value="">Todos</option>
+      {% for v, label in clients_status_choices %}<option value="{{ v }}" {% if cli_status == v %}selected{% endif %}>{{ label }}</option>{% endfor %}
+    </select>
+  </div>
+  <div class="field" style="margin-bottom:0;min-width:160px">
+    <label>Tipo de documento</label>
+    <select name="cli_doc_type">
+      <option value="">Todos</option>
+      {% for v, label in clients_doc_choices %}<option value="{{ v }}" {% if cli_doc_type == v %}selected{% endif %}>{{ label }}</option>{% endfor %}
+    </select>
+  </div>
+  <button class="btn btn-primary" type="submit">Filtrar</button>
+  <a class="btn btn-ghost" href="?tab=clientes">Limpiar</a>
+</form>
+
+<div class="card"><div class="table-wrap"><table>
+  <thead><tr><th>Cliente</th><th>Documento</th><th>Estado</th><th>Teléfono</th><th>Plan(es)</th><th>Registrado</th></tr></thead>
+  <tbody>
+  {% for c in clients %}
+    <tr>
+      <td>{{ c.full_name }}</td>
+      <td>{{ c.full_id }}</td>
+      <td><span class="badge {{ c.status_badge_class }}">{{ c.get_status_display }}</span></td>
+      <td>{{ c.phone|default:"—" }}</td>
+      <td>{{ c.plans_summary|default:"Sin plan" }}</td>
+      <td>{{ c.created_at|date:"d/m/Y" }}</td>
+    </tr>
+  {% empty %}<tr><td colspan="6" style="text-align:center;color:var(--muted)">Sin clientes para estos filtros.</td></tr>{% endfor %}
+  </tbody>
+</table></div>{% include "_partials/pagination.html" %}</div>
+
+{% elif tab == 'planes' %}
+
+<form method="get" class="toolbar" style="align-items:flex-end">
+  <input type="hidden" name="tab" value="planes">
+  <div class="field" style="margin-bottom:0;min-width:180px">
+    <label>Área</label>
+    <select name="pl_service">
+      <option value="">Todas</option>
+      {% for s in plans_services %}<option value="{{ s.pk }}" {% if pl_service == s.pk|stringformat:"s" %}selected{% endif %}>{{ s.name }}</option>{% endfor %}
+    </select>
+  </div>
+  <div class="field" style="margin-bottom:0;min-width:160px">
+    <label>Duración</label>
+    <select name="pl_duration">
+      <option value="">Todas</option>
+      {% for v, label in plans_duration_choices %}<option value="{{ v }}" {% if pl_duration == v %}selected{% endif %}>{{ label }}</option>{% endfor %}
+    </select>
+  </div>
+  <div class="field" style="margin-bottom:0;min-width:160px">
+    <label>Personalizado</label>
+    <select name="pl_custom">
+      <option value="">Todos</option>
+      <option value="1" {% if pl_custom == "1" %}selected{% endif %}>Sí</option>
+      <option value="0" {% if pl_custom == "0" %}selected{% endif %}>No</option>
+    </select>
+  </div>
+  <button class="btn btn-primary" type="submit">Filtrar</button>
+  <a class="btn btn-ghost" href="?tab=planes">Limpiar</a>
+</form>
+
+<div class="card"><div class="table-wrap"><table>
+  <thead><tr><th>Área</th><th>Plan</th><th>Duración</th><th>Precio BCV</th><th>Precio efectivo</th><th>Personalizado</th><th>Activo</th></tr></thead>
+  <tbody>
+  {% for p in report_plans %}
+    <tr>
+      <td><span class="serv-color" style="background:{{ p.service.color }}"></span>{{ p.service.name }}</td>
+      <td>{{ p.label }}</td>
+      <td>{{ p.get_duration_display }}</td>
+      <td><span class="usd">${{ p.price_bcv }}</span></td>
+      <td><span class="usd">${{ p.price_cash }}</span></td>
+      <td>{{ p.is_custom|yesno:"Sí,No" }}</td>
+      <td>{{ p.is_active|yesno:"Sí,No" }}</td>
+    </tr>
+  {% empty %}<tr><td colspan="7" style="text-align:center;color:var(--muted)">Sin planes para estos filtros.</td></tr>{% endfor %}
+  </tbody>
+</table></div>{% include "_partials/pagination.html" %}</div>
+
+{% elif tab == 'pagos' %}
+
+<form method="get" class="toolbar" style="align-items:flex-end">
+  <input type="hidden" name="tab" value="pagos">
+  <div class="field" style="margin-bottom:0;min-width:200px">
+    <label>Cliente</label>
+    <input type="text" name="pay_q" value="{{ pay_q }}" placeholder="Nombre o cédula…">
+  </div>
+  <div class="field" style="margin-bottom:0;min-width:160px">
+    <label>Método</label>
+    <select name="pay_method">
+      <option value="">Todos</option>
+      {% for v, label in payments_method_choices %}<option value="{{ v }}" {% if pay_method == v %}selected{% endif %}>{{ label }}</option>{% endfor %}
+    </select>
+  </div>
+  <div class="field" style="margin-bottom:0;min-width:150px">
+    <label>Desde</label>
+    <input type="date" name="pay_from" value="{{ pay_from }}">
+  </div>
+  <div class="field" style="margin-bottom:0;min-width:150px">
+    <label>Hasta</label>
+    <input type="date" name="pay_to" value="{{ pay_to }}">
+  </div>
+  <div class="field" style="margin-bottom:0;min-width:160px">
+    <label>Personalizado</label>
+    <select name="pay_custom">
+      <option value="">Todos</option>
+      <option value="1" {% if pay_custom == "1" %}selected{% endif %}>Sí</option>
+      <option value="0" {% if pay_custom == "0" %}selected{% endif %}>No</option>
+    </select>
+  </div>
+  <button class="btn btn-primary" type="submit">Filtrar</button>
+  <a class="btn btn-ghost" href="?tab=pagos">Limpiar</a>
+</form>
+
+<div class="card"><div class="table-wrap"><table>
+  <thead><tr><th>Cliente</th><th>Plan</th><th>Método</th><th>Monto USD</th><th>Monto Bs</th><th>Personalizado</th><th>Fecha</th></tr></thead>
+  <tbody>
+  {% for p in report_payments %}
+    <tr>
+      <td>{{ p.client.full_name }}</td>
+      <td>{{ p.plan.label }}</td>
+      <td>{{ p.get_method_display }}</td>
+      <td><span class="usd">${{ p.amount_usd }}</span></td>
+      <td>{% if p.amount_bs %}Bs {{ p.amount_bs }}{% else %}—{% endif %}</td>
+      <td>{{ p.is_custom|yesno:"Sí,No" }}</td>
+      <td>{{ p.created_at|date:"d/m/Y H:i" }}</td>
+    </tr>
+  {% empty %}<tr><td colspan="7" style="text-align:center;color:var(--muted)">Sin pagos para estos filtros.</td></tr>{% endfor %}
+  </tbody>
+</table></div>{% include "_partials/pagination.html" %}</div>
+
+{% endif %}
 {% endblock %}

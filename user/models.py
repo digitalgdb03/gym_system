@@ -36,6 +36,11 @@ class User(AbstractUser, CreatedByModel):
         return self.Role.INSTRUCTOR in self.roles
 
     @property
+    def has_full_access(self):
+        """Super admin (is_superuser) y Administrador (rol ADMIN) ven y hacen todo."""
+        return self.is_superuser or self.Role.ADMIN in self.roles
+
+    @property
     def roles_label(self):
         labels = dict(self.Role.choices)
         return ", ".join(labels.get(r, r) for r in self.roles)

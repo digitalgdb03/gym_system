@@ -6,6 +6,7 @@ from django.views.generic import ListView, CreateView, UpdateView, DeleteView
 
 from configuration.utils import is_ajax, paginate
 from services.models import Service
+from user.permissions import FullAccessRequiredMixin
 from .models import Plan
 from .forms import PlanForm
 
@@ -28,7 +29,7 @@ class PlanList(LoginRequiredMixin, ListView):
         return qs.filter(Q(name__icontains=q) | Q(plans__name__icontains=q)).distinct()
 
 
-class _Page(LoginRequiredMixin):
+class _Page(LoginRequiredMixin, FullAccessRequiredMixin):
     model = Plan
     form_class = PlanForm
     template_name = TEMPLATE
@@ -60,7 +61,7 @@ class PlanUpdate(_Page, UpdateView):
     pass
 
 
-class PlanDelete(LoginRequiredMixin, DeleteView):
+class PlanDelete(LoginRequiredMixin, FullAccessRequiredMixin, DeleteView):
     model = Plan
     template_name = TEMPLATE
     success_url = reverse_lazy("plans:list")

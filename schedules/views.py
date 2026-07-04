@@ -5,6 +5,7 @@ from django.contrib.auth.mixins import LoginRequiredMixin
 from django.urls import reverse_lazy
 from django.views.generic import TemplateView, CreateView, UpdateView, DeleteView
 
+from user.permissions import FullAccessRequiredMixin
 from .models import GymClass
 from .forms import ClassForm
 
@@ -77,11 +78,11 @@ class ClassCreate(_Page, CreateView):
         return init
 
 
-class ClassUpdate(_Page, UpdateView):
+class ClassUpdate(_Page, FullAccessRequiredMixin, UpdateView):
     pass
 
 
-class ClassDelete(LoginRequiredMixin, DeleteView):
+class ClassDelete(LoginRequiredMixin, FullAccessRequiredMixin, DeleteView):
     model = GymClass
     template_name = TEMPLATE
     success_url = reverse_lazy("schedules:calendar")

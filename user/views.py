@@ -11,6 +11,7 @@ from django.views.generic import ListView, CreateView, UpdateView, DeleteView
 from configuration.utils import is_ajax, paginate
 from .models import User
 from .forms import StaffForm, ProfileForm
+from .permissions import FullAccessRequiredMixin
 
 TEMPLATE = "user/users.html"
 
@@ -24,7 +25,7 @@ def _unique_username(base):
     return username
 
 
-class StaffList(LoginRequiredMixin, ListView):
+class StaffList(LoginRequiredMixin, FullAccessRequiredMixin, ListView):
     model = User
     template_name = TEMPLATE
     context_object_name = "staff"
@@ -45,7 +46,7 @@ class StaffList(LoginRequiredMixin, ListView):
         return qs
 
 
-class _Page(LoginRequiredMixin):
+class _Page(LoginRequiredMixin, FullAccessRequiredMixin):
     model = User
     form_class = StaffForm
     template_name = TEMPLATE
@@ -81,7 +82,7 @@ class StaffUpdate(_Page, UpdateView):
     pass
 
 
-class StaffDelete(LoginRequiredMixin, DeleteView):
+class StaffDelete(LoginRequiredMixin, FullAccessRequiredMixin, DeleteView):
     model = User
     template_name = TEMPLATE
     success_url = reverse_lazy("user:list")
