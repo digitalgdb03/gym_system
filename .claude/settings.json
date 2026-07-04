@@ -28,7 +28,17 @@
       "Bash(echo \"started pid $!\")",
       "Bash(node verify4.js)",
       "Bash(node verify5.js)",
-      "Bash(node verify6.js)"
+      "Bash(node verify6.js)",
+      "Bash(\"./venv/Scripts/python.exe\" manage.py makemigrations --dry-run --verbosity 3)",
+      "Bash(\"./venv/Scripts/python.exe\" manage.py makemigrations client schedules --verbosity 2)",
+      "Bash(\"./venv/Scripts/python.exe\" manage.py makemigrations user --check --dry-run)",
+      "Bash(\"./venv/Scripts/python.exe\" manage.py migrate client schedules user)",
+      "Bash(\"./venv/Scripts/python.exe\" manage.py migrate client)",
+      "Bash(\"./venv/Scripts/python.exe\" manage.py migrate schedules)",
+      "Bash(\"./venv/Scripts/python.exe\" manage.py migrate user)",
+      "Bash(cat /tmp/django_server5.log 2>&1)",
+      "Bash(node verify_9items.js)",
+      "Bash(timeout 40 node verify_9items_part2.js)"
     ]
   }
 }

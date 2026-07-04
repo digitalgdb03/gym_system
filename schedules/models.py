@@ -29,12 +29,12 @@ class GymClass(CreatedByModel):
     kind              = models.CharField("Tipo", max_length=10, choices=Kind.choices, default=Kind.FIXED)
     instructor        = models.ForeignKey("user.User", on_delete=models.PROTECT,
                                            related_name="classes_as_main",
-                                           limit_choices_to={"role": "INSTRUCTOR"},
+                                           limit_choices_to={"roles__contains": ["INSTRUCTOR"]},
                                            verbose_name="Entrenador")
     second_instructor = models.ForeignKey("user.User", on_delete=models.SET_NULL,
                                            null=True, blank=True,
                                            related_name="classes_as_second",
-                                           limit_choices_to={"role": "INSTRUCTOR"},
+                                           limit_choices_to={"roles__contains": ["INSTRUCTOR"]},
                                            verbose_name="Segundo entrenador")
     day        = models.IntegerField("Día", choices=Day.choices)
     start_time = models.TimeField("Hora de inicio")

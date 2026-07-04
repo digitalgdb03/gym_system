@@ -37,6 +37,23 @@
 </div>
 {% endif %}
 
+{% if client.status == 'OVERDUE' and pending_memberships %}
+<div class="card overdue-banner" style="margin-top:20px"><h3>Pagos pendientes</h3>
+  <div class="table-wrap"><table>
+    <thead><tr><th>Servicio</th><th>Venció</th><th>Monto a pagar</th></tr></thead>
+    <tbody>
+    {% for m in pending_memberships %}
+      <tr>
+        <td><span class="serv-color" style="background:{{ m.plan.service.color }}"></span>{{ m.plan.label }}</td>
+        <td>{{ m.end_date }}</td>
+        <td><span class="usd">${{ m.renewal_amount }}</span><div class="bs">Bs {{ m.renewal_amount|bs }}</div></td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table></div>
+</div>
+{% endif %}
+
 <div class="card" style="margin-top:20px"><h3>Planes / servicios</h3>
   <div class="table-wrap"><table>
     <thead><tr><th>Servicio</th><th>Plan</th><th>Inicio</th><th>Vence</th><th>Entrenador</th><th></th></tr></thead>
@@ -76,8 +93,15 @@
       <div class="modal-body">
         {% if membership_form.non_field_errors %}<div class="msg error">{{ membership_form.non_field_errors }}</div>{% endif %}
         {% for field in membership_form %}
-          <div class="field" data-field="{{ field.name }}"><label>{{ field.label }}</label>{% render_field field class="input" %}
-            {% for e in field.errors %}<div class="msg error">{{ e }}</div>{% endfor %}</div>
+          {% if field.field.widget.input_type == "checkbox" %}
+            <div class="field field-check">
+              <label class="check">{% render_field field %}<span>{{ field.label }}</span></label>
+              {% for e in field.errors %}<div class="msg error">{{ e }}</div>{% endfor %}
+            </div>
+          {% else %}
+            <div class="field" data-field="{{ field.name }}"><label>{{ field.label }}</label>{% render_field field class="input" %}
+              {% for e in field.errors %}<div class="msg error">{{ e }}</div>{% endfor %}</div>
+          {% endif %}
         {% endfor %}
         <div class="section-note">Boxeo/MMA exige entrenador. En “personalizado” el vencimiento se calcula según el monto.</div>
       </div>

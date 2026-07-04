@@ -28,7 +28,17 @@
       <div class="modal-body">
         {% if form.non_field_errors %}<div class="msg error">{{ form.non_field_errors }}</div>{% endif %}
         {% for field in form %}
-          {% if field.name == "disciplines" %}
+          {% if field.name == "roles" %}
+            <div class="field" data-field="{{ field.name }}">
+              <label>{{ field.label }}</label>
+              <div class="check-grid">
+                {% for choice in field %}
+                  <div class="field-check"><label class="check">{{ choice.tag }}<span>{{ choice.choice_label }}</span></label></div>
+                {% endfor %}
+              </div>
+              {% for e in field.errors %}<div class="msg error">{{ e }}</div>{% endfor %}
+            </div>
+          {% elif field.name == "disciplines" %}
             <div class="field" data-field="{{ field.name }}">
               <label>{{ field.label }}</label>
               <div class="check-grid">
@@ -74,16 +84,19 @@
 
 {% block scripts %}
 <script>
-  // Muestra la "Disciplina" solo cuando el rol es Instructor.
+  // Muestra la "Disciplina" solo cuando el rol Instructor está marcado.
   (function () {
     var form = document.getElementById("userForm");
     if (!form) return;
-    var role = form.querySelector('[name="role"]');
+    var roleChecks = form.querySelectorAll('input[name="roles"]');
     var disc = form.querySelector('[data-field="disciplines"]');
     function sync() {
-      if (disc) disc.style.display = (role && role.value === "INSTRUCTOR") ? "" : "none";
+      var isInstructor = Array.prototype.some.call(roleChecks, function (c) {
+        return c.value === "INSTRUCTOR" && c.checked;
+      });
+      if (disc) disc.style.display = isInstructor ? "" : "none";
     }
-    if (role) role.addEventListener("change", sync);
+    Array.prototype.forEach.call(roleChecks, function (c) { c.addEventListener("change", sync); });
     sync();
   })();
 </script>

@@ -13,7 +13,9 @@
       <td data-label="Correo">{{ u.username|default:"—" }}</td>
       <td data-label="Cédula">{{ u.full_id|default:"—" }}</td>
       <td data-label="Correo">{{ u.email|default:"—" }}</td>
-      <td data-label="Rol"><span class="role-badge {% if u.role == 'INSTRUCTOR' %}role-INSTRUCTOR{% else %}role-EMPLEADO{% endif %}">{{ u.get_role_display }}</span></td>
+      <td data-label="Rol">
+        {% for code, label in u.roles_display_list %}<span class="role-badge {% if code == 'INSTRUCTOR' %}role-INSTRUCTOR{% else %}role-EMPLEADO{% endif %}">{{ label }}</span>{% empty %}<span style="color:var(--muted)">—</span>{% endfor %}
+      </td>
       <td data-label="Detalle">{% if u.is_instructor %}{% with names=u.disciplines.all %}{% if names %}{% for d in names %}{{ d.name }}{% if not forloop.last %}, {% endif %}{% endfor %}{% else %}{{ u.detail|default:"—" }}{% endif %}{% endwith %}{% else %}{{ u.detail|default:"—" }}{% endif %}</td>
       <td data-label="Teléfono">{{ u.phone|default:"—" }}</td>
       <td data-label="">

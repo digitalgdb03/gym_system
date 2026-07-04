@@ -1,4 +1,3 @@
-import calendar
 from datetime import date, timedelta
 from dateutil.relativedelta import relativedelta
 from django.core.exceptions import ValidationError
@@ -118,6 +117,20 @@ class Client(CreatedByModel):
         self.save(update_fields=["status"])
         return self
 
+    def recompute_status(self):
+        """Pasa a Moroso si alguna membresía venció (end_date < hoy) y a
+        Activo si ninguna está vencida. La congelación es manual y no se
+        toca aquí."""
+        if self.status == self.Status.FROZEN:
+            return self
+        today = date.today()
+        overdue = any(m.end_date and m.end_date < today for m in self.memberships.all())
+        new_status = self.Status.OVERDUE if overdue else self.Status.ACTIVE
+        if new_status != self.status:
+            self.status = new_status
+            self.save(update_fields=["status"])
+        return self
+
 
 class Membership(CreatedByModel):
     client     = models.ForeignKey(Client, on_delete=models.CASCADE, related_name="memberships")
@@ -125,7 +138,7 @@ class Membership(CreatedByModel):
     start_date = models.DateField("Inicio", default=date.today)
     end_date   = models.DateField("Vence", null=True, blank=True)
     trainer    = models.ForeignKey("user.User", on_delete=models.SET_NULL, null=True, blank=True,
-                                   limit_choices_to={"role": "INSTRUCTOR"},
+                                   limit_choices_to={"roles__contains": ["INSTRUCTOR"]},
                                    related_name="memberships_as_trainer", verbose_name="Entrenador")
     is_custom  = models.BooleanField("Personalizado", default=False)
     amount     = models.DecimalField("Monto pagado (USD)", max_digits=8, decimal_places=2,
@@ -141,11 +154,17 @@ class Membership(CreatedByModel):
     def __str__(self):
         return f"{self.client} · {self.plan.label}"
 
+    @property
+    def is_overdue(self):
+        return bool(self.end_date and self.end_date < date.today())
+
+    @property
+    def renewal_amount(self):
+        return self.plan.price(self.currency)
+
     def compute_end_date(self):
         if self.is_custom and self.amount:
-            dim = calendar.monthrange(self.start_date.year, self.start_date.month)[1]
-            per_day = self.plan.price(self.currency) / dim
-            self.days = int(self.amount / per_day) if per_day else 0
+            self.days = self.plan.prorated_days(self.amount, self.currency, self.start_date)
             return self.start_date + timedelta(days=self.days)
         return self.plan.end_date_from(self.start_date)
 

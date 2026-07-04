@@ -14,6 +14,8 @@ class ClientForm(PlaceholderChoiceMixin, forms.ModelForm):
         super().__init__(*args, **kwargs)
         if self.instance.pk is None:
             del self.fields["status"]
+        else:
+            self.fields["id_card"].disabled = True
 
     def clean_id_card(self):
         return (self.cleaned_data.get("id_card") or "").replace(".", "").replace("-", "").strip()

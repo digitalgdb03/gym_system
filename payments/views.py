@@ -1,4 +1,4 @@
-from datetime import date
+from datetime import date, timedelta
 
 from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin
@@ -9,26 +9,33 @@ from django.utils import timezone
 from django.views.generic import TemplateView, CreateView
 
 from client.models import Membership
-from configuration.utils import is_ajax, paginate
+from configuration.utils import is_ajax, paginate, client_plans_json, plan_prices_json
 from .models import Payment
 from .forms import PaymentForm
 
 TEMPLATE = "payments/payments.html"
 
 
-def _renew_membership(client, plan, user=None):
+def _renew_membership(client, plan, user=None, is_custom=False, amount=None, currency=None):
     """El pago renueva el plan: extiende el vencimiento de la membresía
-    (desde hoy si ya venció, o desde su vencimiento si aún está vigente)."""
+    (desde hoy si ya venció, o desde su vencimiento si aún está vigente).
+    Si el pago es personalizado, los días se calculan según el monto pagado
+    en vez de usar la duración completa del plan."""
     membership = client.memberships.filter(plan=plan).order_by("-end_date").first()
     today = date.today()
     start = membership.end_date if membership and membership.end_date and membership.end_date > today else today
-    end = plan.end_date_from(start)
+    if is_custom and amount:
+        days = plan.prorated_days(amount, currency, start)
+        end = start + timedelta(days=days)
+    else:
+        end = plan.end_date_from(start)
     if membership:
         membership.end_date = end
         membership.save(update_fields=["end_date"])
     else:
         membership = Membership.objects.create(client=client, plan=plan, start_date=today, end_date=end,
                                                 created_by=user)
+    client.recompute_status()
     return membership
 
 
@@ -74,6 +81,8 @@ class _Page(LoginRequiredMixin):
         ctx = super().get_context_data(**kwargs)
         ctx.update(_today_stats())
         ctx.update(_list_ctx(self.request))
+        ctx["client_plans_json"] = client_plans_json()
+        ctx["plan_prices_json"] = plan_prices_json()
         ctx["show_form"] = True
         return ctx
 
@@ -89,5 +98,7 @@ class PaymentCreate(_Page, CreateView):
     def form_valid(self, form):
         form.instance.created_by = self.request.user
         response = super().form_valid(form)
-        _renew_membership(self.object.client, self.object.plan, user=self.request.user)
+        payment = self.object
+        _renew_membership(payment.client, payment.plan, user=self.request.user,
+                          is_custom=payment.is_custom, amount=payment.amount_usd, currency=payment.currency)
         return response

@@ -22,6 +22,6 @@ class ClassForm(PlaceholderChoiceMixin, forms.ModelForm):
         super().__init__(*args, **kwargs)
         self.fields["service"].queryset = Service.objects.filter(
             kind=Service.Kind.GUIDED, is_active=True)
-        instructors = User.objects.filter(role=User.Role.INSTRUCTOR)
+        instructors = User.objects.filter(roles__contains=[User.Role.INSTRUCTOR])
         self.fields["instructor"].queryset = instructors
         self.fields["second_instructor"].queryset = instructors

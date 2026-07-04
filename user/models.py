@@ -1,4 +1,5 @@
 from django.contrib.auth.models import AbstractUser
+from django.contrib.postgres.fields import ArrayField
 from django.db import models
 
 from configuration.choices import DocType
@@ -12,7 +13,8 @@ class User(AbstractUser, CreatedByModel):
         INSTRUCTOR = "INSTRUCTOR", "Instructor"
 
     full_name  = models.CharField("Nombre completo", max_length=120)
-    role       = models.CharField("Rol", max_length=12, choices=Role.choices, default=Role.EMPLOYEE)
+    roles      = ArrayField(models.CharField(max_length=12, choices=Role.choices),
+                            default=list, blank=True, verbose_name="Roles")
     doc_type   = models.CharField("Tipo de documento", max_length=1,
                                   choices=DocType.choices, default=DocType.V)
     id_card    = models.CharField("Cédula", max_length=20, blank=True)
@@ -31,7 +33,17 @@ class User(AbstractUser, CreatedByModel):
 
     @property
     def is_instructor(self):
-        return self.role == self.Role.INSTRUCTOR
+        return self.Role.INSTRUCTOR in self.roles
+
+    @property
+    def roles_label(self):
+        labels = dict(self.Role.choices)
+        return ", ".join(labels.get(r, r) for r in self.roles)
+
+    @property
+    def roles_display_list(self):
+        labels = dict(self.Role.choices)
+        return [(r, labels.get(r, r)) for r in self.roles]
 
     @property
     def full_id(self):

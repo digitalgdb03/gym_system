@@ -619,6 +619,8 @@ tbody tr:hover { background: #fafbfd; }
 /* Banner de congelación en el perfil */
 .freeze-banner { border-left: 4px solid var(--info); }
 .freeze-banner h3 { color: var(--info); }
+.overdue-banner { border-left: 4px solid var(--err); }
+.overdue-banner h3 { color: var(--err); }
 .freeze-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; }
 .freeze-grid > div { display: flex; flex-direction: column; gap: 2px; }
 .freeze-grid span { font-size: 11px; letter-spacing: .5px; text-transform: uppercase; color: var(--muted); font-weight: 700; }

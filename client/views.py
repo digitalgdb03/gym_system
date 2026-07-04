@@ -52,6 +52,8 @@ class ClientList(LoginRequiredMixin, ListView):
 
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
+        for c in ctx["clients"]:
+            c.recompute_status()
         if self.request.GET.get("action") == "freeze" and self.request.GET.get("client"):
             target = get_object_or_404(Client, pk=self.request.GET["client"])
             ctx.update(_freeze_ctx(target, FreezeForm(), "list"))
@@ -149,9 +151,11 @@ class ClientDelete(LoginRequiredMixin, DeleteView):
 
 
 def detail_context(client, **extra):
+    memberships = list(client.memberships.select_related("plan", "plan__service", "trainer"))
     ctx = {
         "client": client,
-        "memberships": client.memberships.select_related("plan", "plan__service", "trainer"),
+        "memberships": memberships,
+        "pending_memberships": [m for m in memberships if m.is_overdue],
         "freeze": client.current_freeze,
         "payments": client.payments.select_related("plan").order_by("-created_at")[:10],
     }
@@ -162,6 +166,7 @@ def detail_context(client, **extra):
 @login_required
 def client_detail(request, pk):
     client = get_object_or_404(Client, pk=pk)
+    client.recompute_status()
     action = request.GET.get("action")
     extra = {}
     if action == "membership":

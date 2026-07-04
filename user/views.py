@@ -37,7 +37,7 @@ class StaffList(LoginRequiredMixin, ListView):
         qs = User.objects.filter(is_superuser=False).order_by("-date_joined")
         role = self.request.GET.get("role")
         if role in dict(User.Role.choices):
-            qs = qs.filter(role=role)
+            qs = qs.filter(roles__contains=[role])
         q = self.request.GET.get("q", "").strip()
         if q:
             q_id = q.replace(".", "").replace("-", "")

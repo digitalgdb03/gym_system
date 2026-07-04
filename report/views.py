@@ -42,6 +42,9 @@ def dashboard(request):
     todays_payments = Payment.objects.filter(created_at__date=today).select_related("client", "plan")
     income = todays_payments.aggregate(s=Sum("amount_usd"))["s"] or 0
 
+    for c in Client.objects.prefetch_related("memberships").exclude(status=Client.Status.FROZEN):
+        c.recompute_status()
+
     active  = Client.objects.filter(status=Client.Status.ACTIVE).count()
     overdue = Client.objects.filter(status=Client.Status.OVERDUE).count()
     frozen  = Client.objects.filter(status=Client.Status.FROZEN).count()
@@ -117,7 +120,7 @@ def reports(request):
         payments_qs = Payment.objects.filter(created_by=u, created_at__date__gte=start)
         stats = {
             "name": u.full_name or u.username,
-            "role": u.get_role_display(),
+            "role": u.roles_label,
             "clients": Client.objects.filter(created_by=u, created_at__date__gte=start).count(),
             "payments": payments_qs.count(),
             "amount": payments_qs.aggregate(s=Sum("amount_usd"))["s"] or 0,

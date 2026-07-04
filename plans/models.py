@@ -1,3 +1,4 @@
+import calendar
 from datetime import timedelta
 from dateutil.relativedelta import relativedelta
 from django.db import models
@@ -54,3 +55,10 @@ class Plan(CreatedByModel):
         if self.duration == self.Duration.WEEKLY:
             return start + timedelta(days=7)
         return start + relativedelta(months=1)
+
+    def prorated_days(self, amount, currency, start):
+        """Días de servicio que cubre 'amount' según el precio diario del
+        plan (precio del mes / días del mes de 'start')."""
+        dim = calendar.monthrange(start.year, start.month)[1]
+        per_day = self.price(currency) / dim
+        return int(amount / per_day) if per_day else 0

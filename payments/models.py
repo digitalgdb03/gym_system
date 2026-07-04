@@ -18,6 +18,7 @@ class Payment(CreatedByModel):
     method     = models.CharField("Método", max_length=10, choices=Method.choices, default=Method.MOBILE)
     currency   = models.CharField("Moneda", max_length=4, choices=Plan.Currency.choices,
                                   default=Plan.Currency.BCV)
+    is_custom  = models.BooleanField("Personalizado", default=False)
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
