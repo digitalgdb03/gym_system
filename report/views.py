@@ -6,6 +6,7 @@ from django.shortcuts import render
 from django.utils import timezone
 from configuration.models import ExchangeRate
 from configuration.rates import update_today_rate
+from configuration.utils import paginate
 from attendance.models import Attendance
 from client.models import Client
 from configuration.models import GymConfig
@@ -125,11 +126,12 @@ def reports(request):
         stats["total_actions"] = stats["clients"] + stats["payments"] + stats["attendances"]
         staff_stats.append(stats)
     staff_stats.sort(key=lambda s: s["total_actions"], reverse=True)
+    staff_page = paginate(request, staff_stats)
 
     context = {
         "period": period, "chart_title": chart_title, "serie": _with_pct(serie),
         "total": total, "count": count, "avg": avg,
         "by_method": by_method, "by_area": by_area,
-        "staff_stats": staff_stats,
+        "staff_stats": staff_page, "page_obj": staff_page,
     }
     return render(request, "report/reports.html", context)

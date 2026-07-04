@@ -1,6 +1,6 @@
 {% load gym_extras %}
 <div class="card"><div class="table-wrap"><table>
-  <thead><tr><th>Nombre</th><th>Cédula</th><th>Correo</th><th>Rol</th><th>Detalle</th><th>Teléfono</th><th></th></tr></thead>
+  <thead><tr><th>Nombre</th><th>Usuario</th><th>Cédula</th><th>Correo</th><th>Rol</th><th>Detalle</th><th>Teléfono</th><th></th></tr></thead>
   <tbody>
   {% for u in staff %}
     <tr>
@@ -10,6 +10,7 @@
           <b>{{ u.full_name|default:"—" }}</b>
         </div>
       </td>
+      <td data-label="Correo">{{ u.username|default:"—" }}</td>
       <td data-label="Cédula">{{ u.full_id|default:"—" }}</td>
       <td data-label="Correo">{{ u.email|default:"—" }}</td>
       <td data-label="Rol"><span class="role-badge {% if u.role == 'INSTRUCTOR' %}role-INSTRUCTOR{% else %}role-EMPLEADO{% endif %}">{{ u.get_role_display }}</span></td>

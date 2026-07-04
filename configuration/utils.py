@@ -3,7 +3,7 @@ import json
 from django.core.paginator import Paginator
 
 
-def paginate(request, queryset, per_page=15):
+def paginate(request, queryset, per_page=10):
     return Paginator(queryset, per_page).get_page(request.GET.get("page"))
 
 
