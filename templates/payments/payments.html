@@ -100,7 +100,8 @@
 
     var clientPlans = {{ client_plans_json|default:"{}"|safe }};
     var planPrices = {{ plan_prices_json|default:"{}"|safe }};
-    var bcvRate = parseFloat("{{ gym.bcv_rate|default:'0' }}") || 0;
+    // CÓDIGO CORREGIDO:
+    var bcvRate = parseFloat("{{ gym.bcv_rate|default:'0' }}".replace(",", ".")) || 0;
 
     // Muestra "Monto en USD" solo para Efectivo (USD); "Monto en Bs" para los demás métodos.
     function syncMethodFields() {

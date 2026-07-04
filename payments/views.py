@@ -12,23 +12,49 @@ from client.models import Membership
 from configuration.utils import is_ajax, paginate, client_plans_json, plan_prices_json
 from .models import Payment
 from .forms import PaymentForm
+from attendance.models import Attendance
 
 TEMPLATE = "payments/payments.html"
 
 
 def _renew_membership(client, plan, user=None, is_custom=False, amount=None, currency=None):
     """El pago renueva el plan: extiende el vencimiento de la membresía
-    (desde hoy si ya venció, o desde su vencimiento si aún está vigente).
+    (desde hoy si no tenía deuda de asistencia, o desde su vencimiento 
+    si asistió al gimnasio estando moroso).
     Si el pago es personalizado, los días se calculan según el monto pagado
     en vez de usar la duración completa del plan."""
+    
     membership = client.memberships.filter(plan=plan).order_by("-end_date").first()
     today = date.today()
-    start = membership.end_date if membership and membership.end_date and membership.end_date > today else today
+    
+    # NUEVA LÓGICA DE RENOVACIÓN
+    if membership and membership.end_date:
+        if membership.end_date > today:
+            # Aún vigente: se suma a partir de su vencimiento futuro
+            start = membership.end_date
+        else:
+            # Vencido: buscamos si asistió estando moroso
+            has_attended = Attendance.objects.filter(
+                client=client, 
+                check_in__date__gt=membership.end_date
+            ).exists()
+            
+            if has_attended:
+                # Asistió: se cobra desde la fecha en que venció
+                start = membership.end_date
+            else:
+                # No asistió: se perdona el tiempo y arranca desde hoy
+                start = today
+    else:
+        # Cliente nuevo sin membresías previas
+        start = today
+
     if is_custom and amount:
         days = plan.prorated_days(amount, currency, start)
         end = start + timedelta(days=days)
     else:
         end = plan.end_date_from(start)
+        
     if membership:
         membership.end_date = end
         membership.save(update_fields=["end_date"])
