@@ -7,15 +7,18 @@ from django.db.models import Q
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 
+from client.forms import ClientForm, InitialPaymentForm
 from client.models import Client
-from configuration.utils import is_ajax, paginate
+from client.views import register_client_with_payment
+from configuration.utils import is_ajax, paginate, plan_prices_json, plan_trainer_map_json
 from .models import Attendance, normalize_id
 
 
-@login_required
-def attendance_list(request):
+def _list_context(request):
     today = timezone.localdate()
-    records = Attendance.objects.filter(check_in__date=today).select_related("client").prefetch_related("client__memberships")
+    records = Attendance.objects.filter(check_in__date=today).select_related("client").prefetch_related(
+        "client__memberships__plan__service", "client__memberships__trainer"
+    )
     q = request.GET.get("q", "").strip()
     if q:
         q_id = normalize_id(q)
@@ -23,18 +26,38 @@ def attendance_list(request):
             Q(client__full_name__icontains=q) | Q(client__id_card__icontains=q_id)
         )
     page = paginate(request, records)
-    if is_ajax(request):
-        return render(request, "attendance/_results.html", {"records": page, "page_obj": page})
-    context = {
+    return {
         "records": page,
         "page_obj": page,
         "inside": records.filter(check_out__isnull=True).count(),
         "total": records.count(),
         "distinct": records.values("client").distinct().count(),
         "doc_types": ["V", "E", "J", "P"],
-        "just_marked": request.session.pop("just_marked", None),
     }
-    return render(request, "attendance/list.html", context)
+
+
+def _mark_attendance(client, user):
+    """Registra la entrada de hoy y arma la tarjeta de estatus + plan."""
+    Attendance.objects.create(client=client, created_by=user)
+    return {
+        "name": client.full_name, "id_card": client.full_id,
+        "status": client.status, "status_display": client.get_status_display(),
+        "plan": client.plans_summary or "Sin plan",
+        "trainer": client.trainers_summary or "—",
+        "plan_start": client.plan_start_date.strftime("%d/%m/%Y") if client.plan_start_date else "",
+        "plan_end": client.next_due_date.strftime("%d/%m/%Y") if client.next_due_date else "",
+        "plan_days_label": client.plan_days_label,
+    }
+
+
+@login_required
+def attendance_list(request):
+    ctx = _list_context(request)
+    if is_ajax(request):
+        return render(request, "attendance/_results.html", ctx)
+    ctx["just_marked"] = request.session.pop("just_marked", None)
+    ctx["client_not_found"] = request.session.pop("client_not_found", None)
+    return render(request, "attendance/list.html", ctx)
 
 
 @login_required
@@ -52,7 +75,9 @@ def mark_entry(request):
             None,
         )
         if not client:
-            messages.error(request, f"No se encontró un cliente con la cédula {doc}-{number}.")
+            # No existe: se le pregunta al usuario si quiere registrarlo,
+            # en vez de solo mostrar un error.
+            request.session["client_not_found"] = {"doc_type": doc, "number": number}
             return redirect("attendance:list")
 
         today = timezone.localdate()
@@ -75,17 +100,39 @@ def mark_entry(request):
             rec.save(update_fields=["check_out"])
 
         # Registra la entrada de hoy y dispara la tarjeta con estatus + plan + instructor.
-        Attendance.objects.create(client=client, created_by=request.user)
-        request.session["just_marked"] = {
-            "name": client.full_name, "id_card": client.full_id,
-            "status": client.status, "status_display": client.get_status_display(),
-            "plan": client.plans_summary or "Sin plan",
-            "trainer": client.trainers_summary or "—",
-            "plan_start": client.plan_start_date.strftime("%d/%m/%Y") if client.plan_start_date else "",
-            "plan_end": client.next_due_date.strftime("%d/%m/%Y") if client.next_due_date else "",
-            "plan_days_label": client.plan_days_label,
-        }
+        request.session["just_marked"] = _mark_attendance(client, request.user)
     return redirect("attendance:list")
+
+
+@login_required
+def register_client(request):
+    """Si al marcar asistencia la cédula no corresponde a ningún cliente y
+    el usuario acepta registrarlo, se da de alta con su pago inicial (mismo
+    flujo que en Clientes/Pagos) y se marca su entrada de una vez."""
+    doc_type = request.GET.get("doc_type") or request.POST.get("doc_type") or "V"
+    number = request.GET.get("number") or request.POST.get("number") or ""
+
+    if request.method == "POST":
+        form = ClientForm(request.POST)
+        payment_form = InitialPaymentForm(request.POST)
+        if form.is_valid() and payment_form.is_valid():
+            client, _m = register_client_with_payment(form, payment_form, request.user)
+            request.session["just_marked"] = _mark_attendance(client, request.user)
+            messages.success(request, "Cliente registrado y entrada marcada.")
+            return redirect("attendance:list")
+    else:
+        form = ClientForm(initial={"doc_type": doc_type, "id_card": number})
+        payment_form = InitialPaymentForm()
+
+    ctx = _list_context(request)
+    ctx.update({
+        "show_register": True,
+        "register_form": form,
+        "register_payment_form": payment_form,
+        "plan_trainer_map_json": plan_trainer_map_json(),
+        "plan_prices_json": plan_prices_json(),
+    })
+    return render(request, "attendance/list.html", ctx)
 
 
 @login_required

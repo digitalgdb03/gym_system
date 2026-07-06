@@ -5,7 +5,7 @@
 {% block content %}
 
 <div class="toolbar">
-  <form method="get" class="search" data-target="search-results" style="display:flex;align-items:center;gap:10px;max-width:500px">
+  <form method="get" class="search" data-target="search-results" style="display:flex;align-items:center;gap:10px;max-width:700px">
     <div style="position:relative;flex:1">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
       <input name="q" value="{{ request.GET.q }}" placeholder="Buscar por nombre o cédula…" style="width:100%">
@@ -13,6 +13,10 @@
     <select name="status" style="padding:10px 13px;border:1px solid var(--line);border-radius:10px;font-size:14px;background:#fff;color:var(--ink)">
       <option value="">Todos los estados</option>
       {% for v, label in status_choices %}<option value="{{ v }}" {% if selected_status == v %}selected{% endif %}>{{ label }}</option>{% endfor %}
+    </select>
+    <select name="plan" style="padding:10px 13px;border:1px solid var(--line);border-radius:10px;font-size:14px;background:#fff;color:var(--ink)">
+      <option value="">Todos los planes</option>
+      {% for p in plan_choices %}<option value="{{ p.pk }}" {% if selected_plan == p.pk|stringformat:"s" %}selected{% endif %}>{{ p.label }}</option>{% endfor %}
     </select>
   </form>
   <a class="btn btn-primary" href="{% url 'client:create' %}" style="margin-left:auto">+ Nuevo cliente</a>
@@ -75,6 +79,7 @@
 {% endif %}
 
 {% include "client/_freeze_modal.html" %}
+{% include "client/_membership_modal.html" %}
 
 {% if membership_form %}
 <script>

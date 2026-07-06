@@ -58,10 +58,13 @@ def _renew_membership(client, plan, user=None, is_custom=False, amount=None, cur
         end = plan.end_date_from(start)
         
     if membership:
+        # start_date también se actualiza: siempre debe reflejar el inicio
+        # del período vigente/recién pagado, no el primer pago histórico.
+        membership.start_date = start
         membership.end_date = end
-        membership.save(update_fields=["end_date"])
+        membership.save(update_fields=["start_date", "end_date"])
     else:
-        membership = Membership.objects.create(client=client, plan=plan, start_date=today, end_date=end,
+        membership = Membership.objects.create(client=client, plan=plan, start_date=start, end_date=end,
                                                 created_by=user)
     client.recompute_status()
     return membership

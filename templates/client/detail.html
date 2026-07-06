@@ -69,7 +69,7 @@
         <td>{{ m.start_date }}</td><td>{{ m.end_date|default:"—" }}</td>
         <td>{{ m.trainer.full_name|default:"—" }}</td>
         <td style="text-align:right">
-          {% if user.has_full_access %}
+          {% if user.has_full_access and memberships|length > 1 %}
           <form method="post" action="{% url 'client:membership_remove' m.pk %}" onsubmit="return confirm('¿Quitar este plan?')">{% csrf_token %}
             <button class="icon-btn del" title="Quitar">🗑</button></form>
           {% endif %}
@@ -91,49 +91,7 @@
   </table></div>
 </div>
 
-{% if show_membership %}
-<div class="modal-overlay" data-close="{% url 'client:detail' client.pk %}">
-  <div class="modal" role="dialog">
-    <h3 class="modal-title">Agregar plan</h3>
-    <form method="post" action="{% url 'client:membership_add' client.pk %}" id="membershipAddForm">{% csrf_token %}
-      <div class="modal-body">
-        {% if membership_form.non_field_errors %}<div class="msg error">{{ membership_form.non_field_errors }}</div>{% endif %}
-        {% for field in membership_form %}
-          {% if field.field.widget.input_type == "checkbox" %}
-            <div class="field field-check">
-              <label class="check">{% render_field field %}<span>{{ field.label }}</span></label>
-              {% for e in field.errors %}<div class="msg error">{{ e }}</div>{% endfor %}
-            </div>
-          {% else %}
-            <div class="field" data-field="{{ field.name }}"><label>{{ field.label }}</label>{% render_field field class="input" %}
-              {% for e in field.errors %}<div class="msg error">{{ e }}</div>{% endfor %}</div>
-          {% endif %}
-        {% endfor %}
-        <div class="section-note">Boxeo/MMA exige entrenador. En “personalizado” el vencimiento se calcula según el monto.</div>
-      </div>
-      <div class="modal-actions">
-        <a class="btn btn-ghost" href="{% url 'client:detail' client.pk %}">Cancelar</a>
-        <button class="btn btn-primary">Guardar</button>
-      </div>
-    </form>
-  </div>
-</div>
-<script>
-  (function () {
-    var trainerNeeded = {{ plan_trainer_map_json|default:"{}"|safe }};
-    var form = document.getElementById("membershipAddForm");
-    if (!form) return;
-    var planSelect = form.querySelector('[name="plan"]');
-    var trainerField = form.querySelector('[data-field="trainer"]');
-    function sync() {
-      if (!planSelect || !trainerField) return;
-      trainerField.style.display = trainerNeeded[planSelect.value] ? "" : "none";
-    }
-    if (planSelect) planSelect.addEventListener("change", sync);
-    sync();
-  })();
-</script>
-{% endif %}
+{% include "client/_membership_modal.html" %}
 
 {% if show_form %}
 <div class="modal-overlay" data-close="{% url 'client:detail' client.pk %}">

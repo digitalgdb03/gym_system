@@ -1,14 +1,24 @@
   <div class="table-wrap"><table>
-  <thead><tr><th>Cliente</th><th>Cédula</th><th>Estatus</th><th>Inicio</th><th>Vence</th><th>Entrada</th><th>Salida</th><th>Ubicación</th><th></th></tr></thead>
+  <thead><tr><th>Cliente</th><th>Cédula</th><th>Estatus</th><th>Planes</th><th>Entrada</th><th>Salida</th><th>Ubicación</th><th></th></tr></thead>
   <tbody>
   {% for a in records %}
     <tr>
       <td data-label="Cliente"><div class="cell-name"><div class="av {% cycle '' 'o' 'n' %}">{{ a.client.full_name|slice:":2"|upper }}</div><b>{{ a.client.full_name }}</b></div></td>
       <td data-label="Cédula">{{ a.client.full_id }}</td>
       <td data-label="Estatus"><span class="badge {{ a.client.status_badge_class }}">{{ a.client.get_status_display }}</span></td>
-      <td data-label="Inicio">{{ a.client.plan_start_date|date:"d/m/Y"|default:"—" }}</td>
-      <td data-label="Vence">{{ a.client.next_due_date|date:"d/m/Y"|default:"—" }}
-        {% if a.client.plan_days_label %}<div style="color:var(--muted);font-size:12px">{{ a.client.plan_days_label }}</div>{% endif %}
+      <td data-label="Planes">
+        {% if a.client.memberships.all %}
+          <div class="plan-stack">
+            {% for m in a.client.memberships.all %}
+              <div class="plan-stack-item">
+                <b>{{ m.plan.label }}</b>
+                <span class="plan-stack-dates">{{ m.start_date|date:"d/m/Y" }} → {{ m.end_date|date:"d/m/Y"|default:"—" }}</span>
+                {% if m.trainer %}<span class="plan-stack-dates">Entrenador: {{ m.trainer.full_name }}</span>{% endif %}
+                {% with badge=m.days_badge %}{% if badge %}<span class="badge {{ badge.1 }}">{{ badge.0 }}</span>{% endif %}{% endwith %}
+              </div>
+            {% endfor %}
+          </div>
+        {% else %}<span style="color:var(--muted)">Sin plan</span>{% endif %}
       </td>
       <td data-label="Entrada">{{ a.check_in|date:"g:i A" }}</td>
       <td data-label="Salida">{{ a.check_out|date:"g:i A"|default:"—" }}</td>
@@ -24,6 +34,6 @@
         </div>
       </td>
     </tr>
-  {% empty %}<tr><td colspan="9" style="text-align:center;color:var(--muted)">Sin registros hoy.</td></tr>{% endfor %}
+  {% empty %}<tr><td colspan="8" style="text-align:center;color:var(--muted)">Sin registros hoy.</td></tr>{% endfor %}
   </tbody>
 </table></div>{% include "_partials/pagination.html" %}

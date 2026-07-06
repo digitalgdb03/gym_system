@@ -19,6 +19,7 @@ class ClientForm(PlaceholderChoiceMixin, forms.ModelForm):
         else:
             self.fields["id_card"].disabled = True
             self.fields["doc_type"].disabled = True
+            self.fields["status"].disabled = True
 
     def clean_id_card(self):
         return (self.cleaned_data.get("id_card") or "").replace(".", "").replace("-", "").strip()
@@ -50,6 +51,18 @@ class InitialPaymentForm(PaymentForm):
         if plan and plan.requires_trainer and not cleaned.get("trainer"):
             self.add_error("trainer", "Asigna un entrenador (Boxeo/MMA).")
         return cleaned
+
+
+class AddPlanForm(InitialPaymentForm):
+    """Agregar un plan adicional a un cliente que ya existe: mismo
+    formulario y flujo de pago que el registro inicial, sin ofrecer
+    planes que el cliente ya tiene asignados."""
+
+    def __init__(self, *args, client=None, **kwargs):
+        super().__init__(*args, **kwargs)
+        if client is not None:
+            existing = client.memberships.values_list("plan_id", flat=True)
+            self.fields["plan"].queryset = self.fields["plan"].queryset.exclude(pk__in=existing)
 
 
 class FreezeForm(forms.Form):

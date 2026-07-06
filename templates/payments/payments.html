@@ -92,7 +92,10 @@
           </div>
         </div>
 
-        <div id="newClientNote" class="section-note" style="display:none;margin:0 0 10px">Cliente nuevo — completa sus datos para registrarlo y cobrar el pago.</div>
+        <div id="newClientNote" class="section-note" style="display:none;margin:0 0 10px">
+          Cliente nuevo — completa sus datos para registrarlo y cobrar el pago.
+          <a href="#" id="backToSearchBtn">Buscar cliente existente</a>
+        </div>
         <div id="newClientFields" style="display:none">
           {% if client_form.non_field_errors %}<div class="msg error">{{ client_form.non_field_errors }}</div>{% endif %}
           {% for field in client_form %}
@@ -136,8 +139,18 @@
     var clientSearch = document.getElementById("clientSearchInput");
     var clientIdField = document.getElementById("clientIdField");
     var clientResults = document.getElementById("clientResults");
+    var clientFieldWrap = form.querySelector('[data-field="client"]');
     var newClientFields = document.getElementById("newClientFields");
     var newClientNote = document.getElementById("newClientNote");
+    var backToSearchBtn = document.getElementById("backToSearchBtn");
+
+    // Guarda cuáles campos son "required" en verdad (tal como los renderizó
+    // Django), antes de que el toggle de mostrar/ocultar los desactive.
+    if (newClientFields) {
+      Array.prototype.forEach.call(newClientFields.querySelectorAll("input, select, textarea"), function (el) {
+        el.dataset.wasRequired = el.required ? "1" : "0";
+      });
+    }
 
     var clientPlans = {{ client_plans_json|default:"{}"|safe }};
     var planPrices = {{ plan_prices_json|default:"{}"|safe }};
@@ -182,16 +195,52 @@
       }
     }
 
+    // Si lo tecleado en el buscador son números, se precarga en Cédula;
+    // si son letras, se precarga en Nombre. Así no hay que escribirlo dos veces.
+    function prefillNewClient(query) {
+      if (!newClientFields || !query) return;
+      var idInput = newClientFields.querySelector('[name="id_card"]');
+      var nameInput = newClientFields.querySelector('[name="full_name"]');
+      var digits = query.replace(/[^0-9]/g, "");
+      var letters = query.replace(/[^A-Za-zÀ-ÿ ]/g, "").trim();
+      if (digits.length >= 5 && digits.length >= letters.replace(/\s/g, "").length) {
+        if (idInput && !idInput.value) idInput.value = digits;
+      } else if (letters) {
+        if (nameInput && !nameInput.value) nameInput.value = query;
+      }
+    }
+
+    // Un campo "required" oculto (display:none) hace que el navegador
+    // bloquee el submit sin poder enfocarlo para avisar del error; por eso
+    // el atributo required se activa/desactiva junto con la visibilidad.
+    function setNewClientRequired(isRequired) {
+      if (!newClientFields) return;
+      var controls = newClientFields.querySelectorAll("input, select, textarea");
+      Array.prototype.forEach.call(controls, function (el) {
+        if (isRequired) {
+          if (el.dataset.wasRequired === "1") el.required = true;
+        } else {
+          el.dataset.wasRequired = el.required ? "1" : "0";
+          el.required = false;
+        }
+      });
+    }
+
     function showNewClientFields() {
       if (newClientFields) newClientFields.style.display = "";
       if (newClientNote) newClientNote.style.display = "";
+      if (clientFieldWrap) clientFieldWrap.style.display = "none";
       clientIdField.value = "";
+      setNewClientRequired(true);
+      prefillNewClient(clientSearch.value.trim());
       syncPlanOptions();
     }
 
     function hideNewClientFields() {
       if (newClientFields) newClientFields.style.display = "none";
       if (newClientNote) newClientNote.style.display = "none";
+      if (clientFieldWrap) clientFieldWrap.style.display = "";
+      setNewClientRequired(false);
     }
 
     function selectClient(id, label) {
@@ -246,12 +295,27 @@
       }
     });
 
+    if (backToSearchBtn) {
+      backToSearchBtn.addEventListener("click", function (e) {
+        e.preventDefault();
+        hideNewClientFields();
+        var idInput = newClientFields.querySelector('[name="id_card"]');
+        var nameInput = newClientFields.querySelector('[name="full_name"]');
+        if (idInput) idInput.value = "";
+        if (nameInput) nameInput.value = "";
+        clientSearch.value = "";
+        clientSearch.focus();
+      });
+    }
+
     if (method) method.addEventListener("change", function () { syncMethodFields(); syncAmount(); });
     if (planSelect) planSelect.addEventListener("change", syncAmount);
     if (customCheck) customCheck.addEventListener("change", syncAmount);
 
     {% if client_form.is_bound %}
     showNewClientFields();
+    {% else %}
+    setNewClientRequired(false);
     {% endif %}
 
     syncPlanOptions();

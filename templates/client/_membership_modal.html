@@ -1,0 +1,82 @@
+{% load widget_tweaks %}
+{% if show_membership %}
+<div class="modal-overlay" data-close="{{ membership_close_url }}">
+  <div class="modal" role="dialog">
+    <h3 class="modal-title">Agregar plan{% if membership_client %} — {{ membership_client.full_name }}{% endif %}</h3>
+    <form method="post" action="{% url 'client:membership_add' membership_client.pk %}" id="membershipAddForm">{% csrf_token %}
+      <input type="hidden" name="from" value="{{ membership_from }}">
+      <div class="modal-body">
+        {% if plan_form.non_field_errors %}<div class="msg error">{{ plan_form.non_field_errors }}</div>{% endif %}
+        {% for field in plan_form %}
+          {% if field.field.widget.input_type == "checkbox" %}
+            <div class="field field-check" data-field="{{ field.name }}">
+              <label class="check">{% render_field field %}<span>{{ field.label }}</span></label>
+              {% for e in field.errors %}<div class="msg error">{{ e }}</div>{% endfor %}
+            </div>
+          {% else %}
+            <div class="field" data-field="{{ field.name }}"><label>{{ field.label }}</label>{% render_field field class="input" %}
+              {% if field.help_text %}<div class="field-hint">{{ field.help_text }}</div>{% endif %}
+              {% for e in field.errors %}<div class="msg error">{{ e }}</div>{% endfor %}</div>
+          {% endif %}
+        {% endfor %}
+        <div class="section-note">Boxeo/MMA exige entrenador. El monto se autocompleta según el plan y el método (edítalo si el pago es personalizado).</div>
+      </div>
+      <div class="modal-actions">
+        <a class="btn btn-ghost" href="{{ membership_close_url }}">Cancelar</a>
+        <button class="btn btn-primary">Cobrar y agregar</button>
+      </div>
+    </form>
+  </div>
+</div>
+<script>
+  (function () {
+    var trainerNeeded = {{ plan_trainer_map_json|default:"{}"|safe }};
+    var planPrices = {{ plan_prices_json|default:"{}"|safe }};
+    var bcvRate = parseFloat("{{ gym.bcv_rate|default:'0' }}".replace(",", ".")) || 0;
+
+    var form = document.getElementById("membershipAddForm");
+    if (!form) return;
+    var planSelect = form.querySelector('[name="plan"]');
+    var trainerField = form.querySelector('[data-field="trainer"]');
+    var method = form.querySelector('[name="method"]');
+    var usdField = form.querySelector('[data-field="amount_usd"]');
+    var bsField = form.querySelector('[data-field="amount_bs"]');
+    var usdInput = usdField ? usdField.querySelector("input") : null;
+    var bsInput = bsField ? bsField.querySelector("input") : null;
+    var customCheck = form.querySelector('[name="is_custom"]');
+
+    function syncTrainer() {
+      if (!planSelect || !trainerField) return;
+      trainerField.style.display = trainerNeeded[planSelect.value] ? "" : "none";
+    }
+
+    function syncMethodFields() {
+      var isUsd = method && method.value === "CASH_USD";
+      if (usdField) usdField.style.display = isUsd ? "" : "none";
+      if (bsField) bsField.style.display = isUsd ? "none" : "";
+    }
+
+    function syncAmount() {
+      var isCustom = customCheck && customCheck.checked;
+      if (usdInput) usdInput.readOnly = !isCustom;
+      if (bsInput) bsInput.readOnly = !isCustom;
+      if (isCustom || !planSelect || !method) return;
+      var price = planPrices[planSelect.value];
+      if (!price) return;
+      if (method.value === "CASH_USD") {
+        if (usdInput) usdInput.value = price.cash;
+      } else if (bcvRate) {
+        if (bsInput) bsInput.value = (parseFloat(price.bcv) * bcvRate).toFixed(2);
+      }
+    }
+
+    if (planSelect) planSelect.addEventListener("change", function () { syncTrainer(); syncAmount(); });
+    if (method) method.addEventListener("change", function () { syncMethodFields(); syncAmount(); });
+    if (customCheck) customCheck.addEventListener("change", syncAmount);
+
+    syncTrainer();
+    syncMethodFields();
+    syncAmount();
+  })();
+</script>
+{% endif %}

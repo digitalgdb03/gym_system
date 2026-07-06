@@ -19,7 +19,7 @@ from schedules.models import GymClass
 from services.models import Service
 from user.models import User
 from user.permissions import full_access_required
-from .pdf import build_report_pdf
+from .pdf import build_plan_cell, build_report_pdf
 
 DAY_SHORT = ["Lu", "Ma", "Mi", "Ju", "Vi", "Sá", "Do"]      # weekday(): lunes = 0
 METHOD_ABBR = {"CASH_USD": "Efec. $", "CASH_BS": "Efec. Bs", "MOBILE": "P. Móvil",
@@ -154,7 +154,9 @@ def _summary_context(request):
 
 
 def _clients_queryset(request):
-    qs = Client.objects.prefetch_related("memberships__plan__service").order_by("full_name")
+    qs = Client.objects.prefetch_related(
+        "memberships__plan__service", "memberships__trainer"
+    ).order_by("full_name")
     q = request.GET.get("cli_q", "").strip()
     status = request.GET.get("cli_status", "")
     doc_type = request.GET.get("cli_doc_type", "")
@@ -189,7 +191,7 @@ def _clients_rows(qs):
     for c in qs:
         c.recompute_status()
         rows.append([c.full_name, c.full_id, c.get_status_display(), c.phone or "—",
-                     c.plans_summary or "Sin plan", c.created_at.strftime("%d/%m/%Y")])
+                     build_plan_cell(list(c.memberships.all())), c.created_at.strftime("%d/%m/%Y")])
     return rows
 
 

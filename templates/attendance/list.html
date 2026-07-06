@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% load widget_tweaks %}
 {% block page_title %}Asistencia{% endblock %}
 {% block page_sub %}Entrada y salida por cédula (acceso libre){% endblock %}
 {% block content %}
@@ -77,6 +78,110 @@
     var close = function () { o.style.opacity = "0"; setTimeout(function () { o.remove(); }, 300); };
     o.addEventListener("click", close);
     setTimeout(close, 4000);
+  })();
+</script>
+{% endif %}
+
+{% if client_not_found %}
+<div class="modal-overlay" data-close="{% url 'attendance:list' %}">
+  <div class="modal" role="dialog">
+    <h3 class="modal-title">Cliente no encontrado</h3>
+    <div class="modal-body">
+      <p>No se encontró ningún cliente con la cédula <b>{{ client_not_found.doc_type }}-{{ client_not_found.number }}</b>. ¿Deseas registrarlo?</p>
+    </div>
+    <div class="modal-actions">
+      <a class="btn btn-ghost" href="{% url 'attendance:list' %}">No</a>
+      <a class="btn btn-primary"
+         href="{% url 'attendance:register' %}?doc_type={{ client_not_found.doc_type }}&number={{ client_not_found.number }}">Sí, registrar</a>
+    </div>
+  </div>
+</div>
+{% endif %}
+
+{% if show_register %}
+<div class="modal-overlay" data-close="{% url 'attendance:list' %}">
+  <div class="modal" role="dialog">
+    <h3 class="modal-title">Registrar cliente</h3>
+    <form method="post" action="{% url 'attendance:register' %}" id="attendanceRegisterForm">{% csrf_token %}
+      <div class="modal-body">
+        {% if register_form.non_field_errors %}<div class="msg error">{{ register_form.non_field_errors }}</div>{% endif %}
+        {% for field in register_form %}
+          <div class="field" data-field="{{ field.name }}"><label>{{ field.label }}</label>{% render_field field class="input" %}
+            {% for e in field.errors %}<div class="msg error">{{ e }}</div>{% endfor %}</div>
+        {% endfor %}
+
+        <hr style="border:none;border-top:1px solid var(--line);margin:16px 0">
+        <div class="section-note" style="margin:0 0 10px">Todo cliente debe registrarse con un plan y su pago inicial.</div>
+        {% if register_payment_form.non_field_errors %}<div class="msg error">{{ register_payment_form.non_field_errors }}</div>{% endif %}
+        {% for field in register_payment_form %}
+          {% if field.field.widget.input_type == "checkbox" %}
+            <div class="field field-check" data-field="{{ field.name }}">
+              <label class="check">{% render_field field %}<span>{{ field.label }}</span></label>
+              {% for e in field.errors %}<div class="msg error">{{ e }}</div>{% endfor %}
+            </div>
+          {% else %}
+            <div class="field" data-field="{{ field.name }}"><label>{{ field.label }}</label>{% render_field field class="input" %}
+              {% if field.help_text %}<div class="field-hint">{{ field.help_text }}</div>{% endif %}
+              {% for e in field.errors %}<div class="msg error">{{ e }}</div>{% endfor %}</div>
+          {% endif %}
+        {% endfor %}
+      </div>
+      <div class="modal-actions">
+        <a class="btn btn-ghost" href="{% url 'attendance:list' %}">Cancelar</a>
+        <button class="btn btn-primary">Registrar y marcar entrada</button>
+      </div>
+    </form>
+  </div>
+</div>
+<script>
+  (function () {
+    var trainerNeeded = {{ plan_trainer_map_json|default:"{}"|safe }};
+    var planPrices = {{ plan_prices_json|default:"{}"|safe }};
+    var bcvRate = parseFloat("{{ gym.bcv_rate|default:'0' }}".replace(",", ".")) || 0;
+
+    var form = document.getElementById("attendanceRegisterForm");
+    if (!form) return;
+    var planSelect = form.querySelector('[name="plan"]');
+    var trainerField = form.querySelector('[data-field="trainer"]');
+    var method = form.querySelector('[name="method"]');
+    var usdField = form.querySelector('[data-field="amount_usd"]');
+    var bsField = form.querySelector('[data-field="amount_bs"]');
+    var usdInput = usdField ? usdField.querySelector("input") : null;
+    var bsInput = bsField ? bsField.querySelector("input") : null;
+    var customCheck = form.querySelector('[name="is_custom"]');
+
+    function syncTrainer() {
+      if (!planSelect || !trainerField) return;
+      trainerField.style.display = trainerNeeded[planSelect.value] ? "" : "none";
+    }
+
+    function syncMethodFields() {
+      var isUsd = method && method.value === "CASH_USD";
+      if (usdField) usdField.style.display = isUsd ? "" : "none";
+      if (bsField) bsField.style.display = isUsd ? "none" : "";
+    }
+
+    function syncAmount() {
+      var isCustom = customCheck && customCheck.checked;
+      if (usdInput) usdInput.readOnly = !isCustom;
+      if (bsInput) bsInput.readOnly = !isCustom;
+      if (isCustom || !planSelect || !method) return;
+      var price = planPrices[planSelect.value];
+      if (!price) return;
+      if (method.value === "CASH_USD") {
+        if (usdInput) usdInput.value = price.cash;
+      } else if (bcvRate) {
+        if (bsInput) bsInput.value = (parseFloat(price.bcv) * bcvRate).toFixed(2);
+      }
+    }
+
+    if (planSelect) planSelect.addEventListener("change", function () { syncTrainer(); syncAmount(); });
+    if (method) method.addEventListener("change", function () { syncMethodFields(); syncAmount(); });
+    if (customCheck) customCheck.addEventListener("change", syncAmount);
+
+    syncTrainer();
+    syncMethodFields();
+    syncAmount();
   })();
 </script>
 {% endif %}

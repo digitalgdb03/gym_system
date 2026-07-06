@@ -1,4 +1,5 @@
 from io import BytesIO
+from xml.sax.saxutils import escape
 
 from django.conf import settings
 from django.http import HttpResponse
@@ -22,6 +23,35 @@ LOGO_PATH = settings.BASE_DIR / "static" / "images" / "zona_gym.png"
 FONT_NAME = "Helvetica"
 FONT_SIZE = 8
 MIN_COL_WIDTH = 1.6 * cm
+PLAN_CELL_WIDTH = 7.5 * cm  # ancho fijo para celdas de varias líneas (Paragraph)
+
+PLAN_CELL_STYLE = ParagraphStyle("PlanCell", fontName=FONT_NAME, fontSize=7.5,
+                                 leading=10, textColor=colors.black)
+
+
+def build_plan_cell(memberships):
+    """Celda con el detalle de cada plan del cliente: nombre, fechas, días
+    restantes/de mora y entrenador (si tiene), una línea por plan."""
+    if not memberships:
+        return "Sin plan"
+    lines = []
+    for m in memberships:
+        start = m.start_date.strftime("%d/%m/%y") if m.start_date else "—"
+        end = m.end_date.strftime("%d/%m/%y") if m.end_date else "—"
+        line = f"<b>{escape(m.plan.label)}</b>: {start}-{end}"
+        badge = m.days_badge
+        if badge:
+            line += f" ({escape(badge[0])})"
+        if m.trainer:
+            line += f" · Entr: {escape(m.trainer.full_name)}"
+        lines.append(line)
+    return Paragraph("<br/>".join(lines), PLAN_CELL_STYLE)
+
+
+def _cell_width(cell):
+    if isinstance(cell, Paragraph):
+        return PLAN_CELL_WIDTH
+    return stringWidth(str(cell), FONT_NAME, FONT_SIZE) + 18
 
 
 def _col_widths(columns, rows, available_width):
@@ -29,9 +59,9 @@ def _col_widths(columns, rows, available_width):
     para que la tabla ocupe exactamente el ancho disponible de la página."""
     widths = []
     for i in range(len(columns)):
-        texts = [str(columns[i])] + [str(r[i]) for r in rows]
-        natural = max((stringWidth(t, FONT_NAME, FONT_SIZE) for t in texts), default=0)
-        widths.append(max(natural + 18, MIN_COL_WIDTH))
+        cells = [columns[i]] + [r[i] for r in rows]
+        natural = max((_cell_width(c) for c in cells), default=0)
+        widths.append(max(natural, MIN_COL_WIDTH))
     total = sum(widths) or 1
     scale = available_width / total
     return [w * scale for w in widths]

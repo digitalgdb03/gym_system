@@ -166,7 +166,23 @@
   {% block scripts %}{% endblock %}
   <script>
     // Los modales solo se cierran con una acción explícita (Cancelar,
-    // Guardar, etc.), nunca al hacer clic fuera de ellos.
+    // Guardar, etc.), nunca al hacer clic fuera de ellos. Por eso se les
+    // agrega un botón "X" arriba a la derecha que hace lo mismo que "Cancelar".
+    (function () {
+      document.querySelectorAll(".modal-overlay[data-close]").forEach(function (overlay) {
+        var modal = overlay.querySelector(".modal");
+        if (!modal || modal.querySelector(".modal-close")) return;
+        var btn = document.createElement("button");
+        btn.type = "button";
+        btn.className = "modal-close";
+        btn.setAttribute("aria-label", "Cerrar");
+        btn.innerHTML = "&times;";
+        btn.addEventListener("click", function () {
+          window.location.href = overlay.dataset.close;
+        });
+        modal.insertBefore(btn, modal.firstChild);
+      });
+    })();
 
     // Menu lateral:
     // - Escritorio (>=1081px): riel fijo con expansion por hover (via CSS). No usa boton.

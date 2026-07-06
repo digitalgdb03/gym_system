@@ -202,6 +202,17 @@ class Membership(CreatedByModel):
     def renewal_amount(self):
         return self.plan.price(self.currency)
 
+    @property
+    def days_badge(self):
+        """(texto, clase) con los días disponibles o de mora de ESTA
+        membresía en particular, en el mismo estilo que el badge de estado."""
+        if not self.end_date:
+            return None
+        today = date.today()
+        if self.end_date >= today:
+            return (f"{(self.end_date - today).days} días restantes", "activo")
+        return (f"{(today - self.end_date).days} días de mora", "moroso")
+
     def compute_end_date(self):
         if self.is_custom and self.amount:
             self.days = self.plan.prorated_days(self.amount, self.currency, self.start_date)
