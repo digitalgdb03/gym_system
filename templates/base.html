@@ -237,6 +237,13 @@
           clearTimeout(timer);
           timer = setTimeout(runSearch, 400);
         });
+
+        // Los filtros select (ej. estatus) dentro del mismo buscador
+        // disparan la búsqueda de inmediato, sin esperar el debounce.
+        var selects = form.querySelectorAll("select");
+        Array.prototype.forEach.call(selects, function (sel) {
+          sel.addEventListener("change", runSearch);
+        });
       });
 
       // Los buscadores SIN data-target (poco comunes) siguen enviando

@@ -1,0 +1,12 @@
+{% load gym_extras %}
+{% if clients %}
+  {% for c in clients %}
+    <button type="button" class="client-option" data-id="{{ c.pk }}" data-label="{{ c.full_name }} ({{ c.full_id }})">
+      <b>{{ c.full_name }}</b><span>{{ c.full_id }}</span>
+    </button>
+  {% endfor %}
+{% elif q %}
+  <button type="button" class="client-option client-option-new" data-new="1">
+    <b>+ Registrar «{{ q }}» como cliente nuevo</b><span>No se encontró ningún cliente con ese nombre o cédula</span>
+  </button>
+{% endif %}

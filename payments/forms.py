@@ -14,7 +14,7 @@ def _round2(value):
 class PaymentForm(PlaceholderChoiceMixin, forms.ModelForm):
     class Meta:
         model = Payment
-        fields = ["client", "plan", "method", "amount_usd", "amount_bs", "is_custom"]
+        fields = ["plan", "method", "amount_usd", "amount_bs", "is_custom"]
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)

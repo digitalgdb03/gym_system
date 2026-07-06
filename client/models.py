@@ -81,6 +81,46 @@ class Client(CreatedByModel):
                     seen.append(first)
         return ", ".join(seen)
 
+    @property
+    def next_due_date(self):
+        """Fecha de vencimiento más próxima entre las membresías del cliente."""
+        dates = [m.end_date for m in self.memberships.all() if m.end_date]
+        return min(dates) if dates else None
+
+    @property
+    def primary_membership(self):
+        """La membresía de referencia para mostrar el plan actual: la que
+        vence más próximo (misma que determina next_due_date)."""
+        memberships = [m for m in self.memberships.all() if m.end_date]
+        if memberships:
+            return min(memberships, key=lambda m: m.end_date)
+        return self.memberships.first()
+
+    @property
+    def plan_start_date(self):
+        m = self.primary_membership
+        return m.start_date if m else None
+
+    @property
+    def plan_days_label(self):
+        """Según el estado: días restantes, días de mora, o días que le
+        quedaban al momento de congelar la membresía."""
+        m = self.primary_membership
+        if not m or not m.end_date:
+            return ""
+        today = date.today()
+        if self.status == self.Status.ACTIVE:
+            return f"{(m.end_date - today).days} días restantes"
+        if self.status == self.Status.OVERDUE:
+            return f"{(today - m.end_date).days} días de mora"
+        if self.status == self.Status.FROZEN:
+            freeze = self.current_freeze
+            if not freeze:
+                return ""
+            pre_freeze_end = m.end_date - timedelta(days=freeze.days or 0)
+            return f"{(pre_freeze_end - freeze.start_date).days} días restantes al congelar"
+        return ""
+
     def freeze(self, reason, kind, amount=None, start=None, user=None):
         start = start or date.today()
         self.status = self.Status.FROZEN

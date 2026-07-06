@@ -45,18 +45,23 @@ class ClientList(LoginRequiredMixin, ListView):
 
     def get_queryset(self):
         q = self.request.GET.get("q", "").strip()
+        status = self.request.GET.get("status", "")
         qs = Client.objects.prefetch_related(
             "memberships__plan__service", "memberships__trainer"
         ).order_by("-created_at")
-        if not q:
-            return qs
-        q_id = q.replace(".", "").replace("-", "")
-        return qs.filter(Q(full_name__icontains=q) | Q(id_card__icontains=q_id))
+        if q:
+            q_id = q.replace(".", "").replace("-", "")
+            qs = qs.filter(Q(full_name__icontains=q) | Q(id_card__icontains=q_id))
+        if status in dict(Client.Status.choices):
+            qs = qs.filter(status=status)
+        return qs
 
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
         for c in ctx["clients"]:
             c.recompute_status()
+        ctx["status_choices"] = Client.Status.choices
+        ctx["selected_status"] = self.request.GET.get("status", "")
         if self.request.GET.get("action") == "freeze" and self.request.GET.get("client"):
             target = get_object_or_404(Client, pk=self.request.GET["client"])
             ctx.update(_freeze_ctx(target, FreezeForm(), "list"))

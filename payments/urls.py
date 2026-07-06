@@ -6,4 +6,5 @@ app_name = "payments"
 urlpatterns = [
     path("", views.PaymentList.as_view(), name="list"),
     path("nuevo/", views.PaymentCreate.as_view(), name="create"),
+    path("buscar-cliente/", views.client_lookup, name="client_lookup"),
 ]

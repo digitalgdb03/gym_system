@@ -5,9 +5,15 @@
 {% block content %}
 
 <div class="toolbar">
-  <form method="get" class="search" data-target="search-results">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
-    <input name="q" value="{{ request.GET.q }}" placeholder="Buscar por nombre o cédula…">
+  <form method="get" class="search" data-target="search-results" style="display:flex;align-items:center;gap:10px;max-width:500px">
+    <div style="position:relative;flex:1">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+      <input name="q" value="{{ request.GET.q }}" placeholder="Buscar por nombre o cédula…" style="width:100%">
+    </div>
+    <select name="status" style="padding:10px 13px;border:1px solid var(--line);border-radius:10px;font-size:14px;background:#fff;color:var(--ink)">
+      <option value="">Todos los estados</option>
+      {% for v, label in status_choices %}<option value="{{ v }}" {% if selected_status == v %}selected{% endif %}>{{ label }}</option>{% endfor %}
+    </select>
   </form>
   <a class="btn btn-primary" href="{% url 'client:create' %}" style="margin-left:auto">+ Nuevo cliente</a>
 </div>

@@ -109,4 +109,9 @@ LOGIN_URL = "user:login"
 LOGIN_REDIRECT_URL = "report:dashboard"
 LOGOUT_REDIRECT_URL = "user:login"
 
+# Cierra la sesión tras 30 minutos sin actividad: cada request reinicia el
+# conteo, así que solo expira si el usuario deja de interactuar.
+SESSION_COOKIE_AGE = 7200
+SESSION_SAVE_EVERY_REQUEST = True
+
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"

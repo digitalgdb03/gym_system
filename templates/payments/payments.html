@@ -16,6 +16,22 @@
       width: 100%;
     }
   }
+
+  .client-search-wrap{ position: relative; }
+  .client-results{
+    position: absolute; top: calc(100% + 4px); left: 0; right: 0; z-index: 30;
+    background: #fff; border: 1px solid var(--line); border-radius: 10px;
+    box-shadow: 0 12px 30px -12px rgba(0,0,0,.25); max-height: 220px; overflow-y: auto;
+  }
+  .client-option{
+    display: flex; flex-direction: column; align-items: flex-start; gap: 2px;
+    width: 100%; text-align: left; padding: 10px 13px; border: 0; background: none;
+    cursor: pointer; font-family: var(--body);
+  }
+  .client-option:hover{ background: var(--bg); }
+  .client-option b{ font-size: 13.5px; color: var(--ink); }
+  .client-option span{ font-size: 12px; color: var(--muted); }
+  .client-option-new b{ color: var(--azul); }
 </style>
 
 <div class="toolbar">
@@ -65,6 +81,26 @@
     <form method="post" id="paymentForm">{% csrf_token %}
       <div class="modal-body">
         {% if form.non_field_errors %}<div class="msg error">{{ form.non_field_errors }}</div>{% endif %}
+
+        <div class="field" data-field="client">
+          <label>Cliente</label>
+          <div class="client-search-wrap">
+            <input type="text" id="clientSearchInput" name="client_search" class="input" autocomplete="off"
+                   placeholder="Cédula o nombre del cliente…" value="{{ client_search|default:'' }}">
+            <input type="hidden" name="client_id" id="clientIdField" value="{{ client_id_value|default:'' }}">
+            <div class="client-results" id="clientResults" style="display:none"></div>
+          </div>
+        </div>
+
+        <div id="newClientNote" class="section-note" style="display:none;margin:0 0 10px">Cliente nuevo — completa sus datos para registrarlo y cobrar el pago.</div>
+        <div id="newClientFields" style="display:none">
+          {% if client_form.non_field_errors %}<div class="msg error">{{ client_form.non_field_errors }}</div>{% endif %}
+          {% for field in client_form %}
+            <div class="field" data-field="{{ field.name }}"><label>{{ field.label }}</label>{% render_field field class="input" %}
+              {% for e in field.errors %}<div class="msg error">{{ e }}</div>{% endfor %}</div>
+          {% endfor %}
+        </div>
+
         {% for field in form %}
           {% if field.field.widget.input_type == "checkbox" %}
             <div class="field field-check" data-field="{{ field.name }}">
@@ -94,13 +130,17 @@
     var bsField = form.querySelector('[data-field="amount_bs"]');
     var usdInput = usdField ? usdField.querySelector("input") : null;
     var bsInput = bsField ? bsField.querySelector("input") : null;
-    var clientSelect = form.querySelector('[name="client"]');
     var planSelect = form.querySelector('[name="plan"]');
     var customCheck = form.querySelector('[name="is_custom"]');
 
+    var clientSearch = document.getElementById("clientSearchInput");
+    var clientIdField = document.getElementById("clientIdField");
+    var clientResults = document.getElementById("clientResults");
+    var newClientFields = document.getElementById("newClientFields");
+    var newClientNote = document.getElementById("newClientNote");
+
     var clientPlans = {{ client_plans_json|default:"{}"|safe }};
     var planPrices = {{ plan_prices_json|default:"{}"|safe }};
-    // CÓDIGO CORREGIDO:
     var bcvRate = parseFloat("{{ gym.bcv_rate|default:'0' }}".replace(",", ".")) || 0;
 
     // Muestra "Monto en USD" solo para Efectivo (USD); "Monto en Bs" para los demás métodos.
@@ -110,13 +150,16 @@
       if (bsField) bsField.style.display = isUsd ? "none" : "";
     }
 
-    // Solo muestra los planes que el cliente ya tiene, más los planes diarios disponibles.
+    // Si el cliente ya existe y tiene planes propios, solo se muestran esos
+    // + los diarios. Cliente nuevo (sin id todavía): se muestran todos.
     function syncPlanOptions() {
-      if (!clientSelect || !planSelect) return;
-      var allowed = clientPlans[clientSelect.value] || [];
+      if (!planSelect) return;
+      var id = clientIdField.value;
+      var known = id && Object.prototype.hasOwnProperty.call(clientPlans, id);
+      var allowed = known ? clientPlans[id] : null;
       Array.prototype.forEach.call(planSelect.options, function (opt) {
         if (!opt.value) return;
-        opt.hidden = allowed.indexOf(parseInt(opt.value, 10)) === -1;
+        opt.hidden = allowed ? allowed.indexOf(parseInt(opt.value, 10)) === -1 : false;
       });
       if (planSelect.selectedOptions[0] && planSelect.selectedOptions[0].hidden) {
         planSelect.value = "";
@@ -139,10 +182,77 @@
       }
     }
 
+    function showNewClientFields() {
+      if (newClientFields) newClientFields.style.display = "";
+      if (newClientNote) newClientNote.style.display = "";
+      clientIdField.value = "";
+      syncPlanOptions();
+    }
+
+    function hideNewClientFields() {
+      if (newClientFields) newClientFields.style.display = "none";
+      if (newClientNote) newClientNote.style.display = "none";
+    }
+
+    function selectClient(id, label) {
+      clientIdField.value = id;
+      clientSearch.value = label;
+      clientResults.style.display = "none";
+      hideNewClientFields();
+      syncPlanOptions();
+    }
+
+    var searchTimer;
+    function runClientSearch() {
+      var q = clientSearch.value.trim();
+      if (!q) { clientResults.style.display = "none"; clientResults.innerHTML = ""; return; }
+      fetch("{% url 'payments:client_lookup' %}?q=" + encodeURIComponent(q),
+            { headers: { "X-Requested-With": "XMLHttpRequest" } })
+        .then(function (r) { return r.text(); })
+        .then(function (html) {
+          clientResults.innerHTML = html;
+          clientResults.style.display = html.trim() ? "" : "none";
+        });
+    }
+
+    if (clientSearch) {
+      clientSearch.addEventListener("input", function () {
+        clientIdField.value = "";
+        clearTimeout(searchTimer);
+        searchTimer = setTimeout(runClientSearch, 300);
+      });
+      clientSearch.addEventListener("focus", function () {
+        if (clientResults.innerHTML.trim()) clientResults.style.display = "";
+      });
+    }
+
+    if (clientResults) {
+      clientResults.addEventListener("click", function (e) {
+        var btn = e.target.closest(".client-option");
+        if (!btn) return;
+        if (btn.dataset.new) {
+          showNewClientFields();
+          clientResults.style.display = "none";
+        } else {
+          selectClient(btn.dataset.id, btn.dataset.label);
+        }
+      });
+    }
+
+    document.addEventListener("click", function (e) {
+      if (clientResults && clientResults.style.display !== "none" &&
+          !clientResults.contains(e.target) && e.target !== clientSearch) {
+        clientResults.style.display = "none";
+      }
+    });
+
     if (method) method.addEventListener("change", function () { syncMethodFields(); syncAmount(); });
     if (planSelect) planSelect.addEventListener("change", syncAmount);
-    if (clientSelect) clientSelect.addEventListener("change", syncPlanOptions);
     if (customCheck) customCheck.addEventListener("change", syncAmount);
+
+    {% if client_form.is_bound %}
+    showNewClientFields();
+    {% endif %}
 
     syncPlanOptions();
     syncMethodFields();

@@ -1,14 +1,16 @@
 from datetime import date, timedelta
 
 from django.contrib import messages
+from django.contrib.auth.decorators import login_required
 from django.contrib.auth.mixins import LoginRequiredMixin
+from django.db import transaction
 from django.db.models import Q, Sum
-from django.shortcuts import render
-from django.urls import reverse_lazy
+from django.shortcuts import redirect, render
 from django.utils import timezone
-from django.views.generic import TemplateView, CreateView
+from django.views.generic import TemplateView, View
 
-from client.models import Membership
+from client.forms import ClientForm
+from client.models import Client, Membership
 from configuration.utils import is_ajax, paginate, client_plans_json, plan_prices_json
 from .models import Payment
 from .forms import PaymentForm
@@ -97,34 +99,70 @@ class PaymentList(LoginRequiredMixin, TemplateView):
                 **_list_ctx(self.request, self.request.GET.get("q"))}
 
 
-class _Page(LoginRequiredMixin):
-    model = Payment
-    form_class = PaymentForm
-    template_name = TEMPLATE
-    success_url = reverse_lazy("payments:list")
+@login_required
+def client_lookup(request):
+    """Búsqueda de cliente por cédula o nombre para el formulario de Pagos
+    (reemplaza el select por un buscador con registro inline si no existe)."""
+    q = request.GET.get("q", "").strip()
+    clients = []
+    if q:
+        q_id = q.replace(".", "").replace("-", "")
+        clients = Client.objects.filter(
+            Q(full_name__icontains=q) | Q(id_card__icontains=q_id)
+        ).order_by("full_name")[:8]
+    return render(request, "payments/_client_lookup.html", {"clients": clients, "q": q})
 
-    def get_context_data(self, **kwargs):
-        ctx = super().get_context_data(**kwargs)
-        ctx.update(_today_stats())
-        ctx.update(_list_ctx(self.request))
+
+class PaymentCreate(LoginRequiredMixin, View):
+    """Los pagos no se pueden editar ni eliminar: quedan como comprobante
+    fijo del cobro (solo se puede registrar uno nuevo). El cliente se busca
+    por cédula/nombre y, si no existe, se registra en el mismo formulario."""
+    template_name = TEMPLATE
+
+    def _ctx(self, form, client_form=None, client_search="", client_id=""):
+        ctx = {**_today_stats(), **_list_ctx(self.request)}
         ctx["client_plans_json"] = client_plans_json()
         ctx["plan_prices_json"] = plan_prices_json()
         ctx["show_form"] = True
+        ctx["form"] = form
+        ctx["client_form"] = client_form or ClientForm()
+        ctx["client_search"] = client_search
+        ctx["client_id_value"] = client_id
         return ctx
 
-    def form_valid(self, form):
-        response = super().form_valid(form)
-        messages.success(self.request, "Pago guardado.")
-        return response
+    def get(self, request):
+        return render(request, self.template_name, self._ctx(PaymentForm()))
 
+    def post(self, request):
+        form = PaymentForm(request.POST)
+        client_id = request.POST.get("client_id", "").strip()
+        client_search = request.POST.get("client_search", "").strip()
+        client = None
+        client_form = None
 
-class PaymentCreate(_Page, CreateView):
-    """Los pagos no se pueden editar ni eliminar: quedan como
-    comprobante fijo del cobro (solo se puede registrar uno nuevo)."""
-    def form_valid(self, form):
-        form.instance.created_by = self.request.user
-        response = super().form_valid(form)
-        payment = self.object
-        _renew_membership(payment.client, payment.plan, user=self.request.user,
-                          is_custom=payment.is_custom, amount=payment.amount_usd, currency=payment.currency)
-        return response
+        if client_id:
+            client = Client.objects.filter(pk=client_id).first()
+            if not client:
+                messages.error(request, "Selecciona un cliente válido de la lista.")
+        else:
+            client_form = ClientForm(request.POST)
+
+        client_ready = client is not None or (client_form is not None and client_form.is_valid())
+
+        if form.is_valid() and client_ready:
+            with transaction.atomic():
+                if client is None:
+                    client = client_form.save(commit=False)
+                    client.created_by = request.user
+                    client.save()
+                payment = form.save(commit=False)
+                payment.client = client
+                payment.created_by = request.user
+                payment.save()
+                _renew_membership(client, payment.plan, user=request.user, is_custom=payment.is_custom,
+                                  amount=payment.amount_usd, currency=payment.currency)
+            messages.success(request, "Pago guardado.")
+            return redirect("payments:list")
+
+        return render(request, self.template_name,
+                      self._ctx(form, client_form, client_search, client_id))

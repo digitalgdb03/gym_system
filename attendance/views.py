@@ -15,7 +15,7 @@ from .models import Attendance, normalize_id
 @login_required
 def attendance_list(request):
     today = timezone.localdate()
-    records = Attendance.objects.filter(check_in__date=today).select_related("client")
+    records = Attendance.objects.filter(check_in__date=today).select_related("client").prefetch_related("client__memberships")
     q = request.GET.get("q", "").strip()
     if q:
         q_id = normalize_id(q)
@@ -81,6 +81,9 @@ def mark_entry(request):
             "status": client.status, "status_display": client.get_status_display(),
             "plan": client.plans_summary or "Sin plan",
             "trainer": client.trainers_summary or "—",
+            "plan_start": client.plan_start_date.strftime("%d/%m/%Y") if client.plan_start_date else "",
+            "plan_end": client.next_due_date.strftime("%d/%m/%Y") if client.next_due_date else "",
+            "plan_days_label": client.plan_days_label,
         }
     return redirect("attendance:list")
 
