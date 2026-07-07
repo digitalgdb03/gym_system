@@ -18,6 +18,10 @@ class Payment(CreatedByModel):
 
     client     = models.ForeignKey("client.Client", on_delete=models.CASCADE, related_name="payments")
     plan       = models.ForeignKey("plans.Plan", on_delete=models.PROTECT, related_name="payments")
+    trainer    = models.ForeignKey("user.User", on_delete=models.SET_NULL, null=True, blank=True,
+                                   limit_choices_to={"roles__contains": ["INSTRUCTOR"]},
+                                   related_name="payments_as_trainer", verbose_name="Entrenador",
+                                   help_text="Solo para planes diarios (no generan membresía propia).")
     amount_usd = models.DecimalField("Monto (USD)", max_digits=8, decimal_places=2)
     amount_bs  = models.DecimalField("Monto (Bs)", max_digits=12, decimal_places=2, null=True, blank=True)
     method     = models.CharField("Método", max_length=10, choices=Method.choices, default=Method.MOBILE)

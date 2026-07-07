@@ -12,9 +12,10 @@ class Client(CreatedByModel):
     MAX_FREEZE_DAYS = 15
 
     class Status(models.TextChoices):
-        ACTIVE  = "ACTIVE",  "Activo"
-        FROZEN  = "FROZEN",  "Congelado"
-        OVERDUE = "OVERDUE", "Moroso"
+        ACTIVE   = "ACTIVE",   "Activo"
+        FROZEN   = "FROZEN",   "Congelado"
+        OVERDUE  = "OVERDUE",  "Moroso"
+        INACTIVE = "INACTIVE", "Inactivo"
 
     full_name         = models.CharField("Nombre completo", max_length=120)
     doc_type          = models.CharField("Tipo de documento", max_length=1,
@@ -56,7 +57,7 @@ class Client(CreatedByModel):
     @property
     def status_badge_class(self):
         return {self.Status.ACTIVE: "activo", self.Status.FROZEN: "congelado",
-                self.Status.OVERDUE: "moroso"}[self.status]
+                self.Status.OVERDUE: "moroso", self.Status.INACTIVE: "inactivo"}[self.status]
 
     @property
     def current_freeze(self):
@@ -71,6 +72,12 @@ class Client(CreatedByModel):
             return None
         return max((freeze.end_date - date.today()).days, 0)
     
+    @property
+    def can_change_plan(self):
+        """No se puede cambiar el plan a un cliente Congelado (afectaría
+        el cálculo de días congelados) ni Inactivo (baja lógica)."""
+        return self.status not in (self.Status.FROZEN, self.Status.INACTIVE)
+
     @property
     def plans_summary(self):
         ms = list(self.memberships.all())
@@ -170,17 +177,31 @@ class Client(CreatedByModel):
         self.save(update_fields=["status"])
         return self
 
+    def deactivate(self):
+        """Baja lógica (eliminar un cliente nunca borra el registro física-
+        mente: se conserva su historial de pagos, membresías y asistencias,
+        solo deja de listarse salvo que se filtre por estatus Inactivo)."""
+        self.status = self.Status.INACTIVE
+        self.save(update_fields=["status"])
+        return self
+
     def recompute_status(self):
         """Pasa a Moroso si alguna membresía venció (end_date < hoy) y a
         Activo si ninguna está vencida. Si está Congelado y ya pasó el tope
-        de MAX_FREEZE_DAYS días, se reactiva solo y su plan sigue contando."""
+        de MAX_FREEZE_DAYS días, se reactiva solo y su plan sigue contando.
+        Los planes diarios (pase de un día) no se consideran: no deben
+        volver moroso a un cliente que no renovó un pase de un día.
+        Un cliente Inactivo (baja lógica) nunca se reactiva solo."""
+        if self.status == self.Status.INACTIVE:
+            return self
         if self.status == self.Status.FROZEN:
             freeze = self.current_freeze
             if freeze and freeze.end_date and date.today() >= freeze.end_date:
                 self.unfreeze()
             return self
         today = date.today()
-        overdue = any(m.end_date and m.end_date < today for m in self.memberships.all())
+        overdue = any(m.end_date and m.end_date < today and m.plan.duration != Plan.Duration.DAILY
+                      for m in self.memberships.all())
         new_status = self.Status.OVERDUE if overdue else self.Status.ACTIVE
         if new_status != self.status:
             self.status = new_status

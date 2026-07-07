@@ -90,6 +90,7 @@
             <input type="hidden" name="client_id" id="clientIdField" value="{{ client_id_value|default:'' }}">
             <div class="client-results" id="clientResults" style="display:none"></div>
           </div>
+          <div class="field-hint" id="clientDaysInfo" style="display:none"></div>
         </div>
 
         <div id="newClientNote" class="section-note" style="display:none;margin:0 0 10px">
@@ -156,6 +157,7 @@
     var clientPlans = {{ client_plans_json|default:"{}"|safe }};
     var clientPlanEndDates = {{ client_plan_end_dates_json|default:"{}"|safe }};
     var planPrices = {{ plan_prices_json|default:"{}"|safe }};
+    var clientDaysInfo = document.getElementById("clientDaysInfo");
     var bcvRate = parseFloat("{{ gym.bcv_rate|default:'0' }}".replace(",", ".")) || 0;
 
     var startField = form.querySelector('[data-field="start_date"]');
@@ -248,6 +250,28 @@
       endInput.value = suggestedEnd(start);
     }
 
+    // Muestra debajo del buscador los días disponibles o de mora del PLAN
+    // elegido para ese cliente (cada plan tiene su propio vencimiento; si el
+    // cliente no tiene aún ese plan, no hay nada que mostrar).
+    function updateClientDaysInfo() {
+      if (!clientDaysInfo) return;
+      var clientId = clientIdField.value;
+      var planId = planSelect ? planSelect.value : "";
+      var ends = (clientId && clientPlanEndDates[clientId]) || {};
+      var endStr = ends[planId];
+      if (!clientId || !planId || !endStr) {
+        clientDaysInfo.innerHTML = "";
+        clientDaysInfo.style.display = "none";
+        return;
+      }
+      var todayISO = toISO(new Date());
+      var diffDays = Math.round((new Date(endStr + "T00:00:00") - new Date(todayISO + "T00:00:00")) / 86400000);
+      var label = diffDays >= 0 ? diffDays + " días disponibles" : Math.abs(diffDays) + " días de mora";
+      var cls = diffDays >= 0 ? "activo" : "moroso";
+      clientDaysInfo.innerHTML = '<span class="badge ' + cls + '">' + label + '</span>';
+      clientDaysInfo.style.display = "";
+    }
+
     // Si el cliente ya existe y tiene planes propios, solo se muestran esos
     // + los diarios. Cliente nuevo (sin id todavía): se muestran todos.
     function syncPlanOptions() {
@@ -319,6 +343,7 @@
       setNewClientRequired(true);
       prefillNewClient(clientSearch.value.trim());
       syncPlanOptions();
+      updateClientDaysInfo();
       syncDates();
     }
 
@@ -335,6 +360,7 @@
       clientResults.style.display = "none";
       hideNewClientFields();
       syncPlanOptions();
+      updateClientDaysInfo();
       syncDates();
     }
 
@@ -354,6 +380,7 @@
     if (clientSearch) {
       clientSearch.addEventListener("input", function () {
         clientIdField.value = "";
+        updateClientDaysInfo();
         clearTimeout(searchTimer);
         searchTimer = setTimeout(runClientSearch, 300);
       });
@@ -396,7 +423,7 @@
     }
 
     if (method) method.addEventListener("change", function () { syncMethodFields(); syncAmount(); syncDates(); });
-    if (planSelect) planSelect.addEventListener("change", function () { syncAmount(); syncDates(); });
+    if (planSelect) planSelect.addEventListener("change", function () { syncAmount(); syncDates(); updateClientDaysInfo(); });
     if (customCheck) customCheck.addEventListener("change", function () { syncAmount(); syncDates(); });
     if (usdInput) usdInput.addEventListener("input", syncDates);
     if (bsInput) bsInput.addEventListener("input", syncDates);
@@ -407,10 +434,24 @@
     setNewClientRequired(false);
     {% endif %}
 
+    // Si la fecha de inicio o de vencimiento se editan a mano y quedan
+    // invertidas (inicio posterior al vencimiento), se avisa y se limpia
+    // el campo recién tocado.
+    function checkDateOrder(input, other) {
+      if (!input.value || !other.value) return;
+      if (startInput.value > endInput.value) {
+        alert("La fecha de inicio no puede ser posterior a la fecha de vencimiento.");
+        input.value = "";
+      }
+    }
+    if (startInput) startInput.addEventListener("change", function () { checkDateOrder(startInput, endInput); });
+    if (endInput) endInput.addEventListener("change", function () { checkDateOrder(endInput, startInput); });
+
     syncPlanOptions();
     syncMethodFields();
     syncAmount();
     syncDates();
+    updateClientDaysInfo();
   })();
 </script>
 {% endif %}

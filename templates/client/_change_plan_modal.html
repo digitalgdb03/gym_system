@@ -1,0 +1,42 @@
+{% load widget_tweaks %}
+{% if show_change_plan %}
+<div class="modal-overlay" data-close="{{ change_plan_close_url }}">
+  <div class="modal" role="dialog">
+    <h3 class="modal-title">Cambiar plan{% if change_plan_membership %} — {{ change_plan_membership.client.full_name }}{% endif %}</h3>
+    <form method="post" action="{% url 'client:membership_change_plan' change_plan_membership.pk %}" id="changePlanForm">{% csrf_token %}
+      <input type="hidden" name="from" value="{{ change_plan_from }}">
+      <div class="modal-body">
+        <div class="field"><label>Plan actual</label><input class="input" value="{{ change_plan_membership.plan.label }}" disabled></div>
+        {% if change_plan_form.non_field_errors %}<div class="msg error">{{ change_plan_form.non_field_errors }}</div>{% endif %}
+        {% for field in change_plan_form %}
+          <div class="field" data-field="{{ field.name }}"><label>{{ field.label }}</label>{% render_field field class="input" %}
+            {% if field.help_text %}<div class="field-hint">{{ field.help_text }}</div>{% endif %}
+            {% for e in field.errors %}<div class="msg error">{{ e }}</div>{% endfor %}</div>
+        {% endfor %}
+        <div class="section-note">El monto y el vencimiento se recalculan según el nuevo plan; los demás planes del cliente no se ven afectados.</div>
+      </div>
+      <div class="modal-actions">
+        <a class="btn btn-ghost" href="{{ change_plan_close_url }}">Cancelar</a>
+        <button class="btn btn-primary">Cambiar plan</button>
+      </div>
+    </form>
+  </div>
+</div>
+<script>
+  (function () {
+    var trainerNeeded = {{ plan_trainer_map_json|default:"{}"|safe }};
+    var form = document.getElementById("changePlanForm");
+    if (!form) return;
+    var planSelect = form.querySelector('[name="plan"]');
+    var trainerField = form.querySelector('[data-field="trainer"]');
+
+    function syncTrainer() {
+      if (!planSelect || !trainerField) return;
+      trainerField.style.display = trainerNeeded[planSelect.value] ? "" : "none";
+    }
+
+    if (planSelect) planSelect.addEventListener("change", syncTrainer);
+    syncTrainer();
+  })();
+</script>
+{% endif %}

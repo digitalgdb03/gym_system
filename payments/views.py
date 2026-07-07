@@ -12,6 +12,7 @@ from django.views.generic import TemplateView, View
 from client.forms import ClientForm
 from client.models import Client, Membership
 from configuration.utils import is_ajax, paginate, client_plans_json, client_plan_end_dates_json, plan_prices_json
+from plans.models import Plan
 from .models import Payment
 from .forms import PaymentForm
 from attendance.models import Attendance
@@ -27,7 +28,12 @@ def _renew_membership(client, plan, user=None, is_custom=False, amount=None, cur
     Si el pago es personalizado, los días se calculan según el monto pagado
     en vez de usar la duración completa del plan.
     start_override/end_override: si el usuario editó las fechas sugeridas
-    en el formulario, se respetan en vez de calcularlas."""
+    en el formulario, se respetan en vez de calcularlas.
+    Los planes diarios son un pase de un día, no una membresía del cliente:
+    no generan/renuevan Membership (para no figurar como "un plan más" ni
+    afectar su estatus de moroso); solo queda el registro del Payment."""
+    if plan.duration == Plan.Duration.DAILY:
+        return None
 
     membership = client.memberships.filter(plan=plan).order_by("-end_date").first()
     today = date.today()
@@ -110,16 +116,21 @@ class PaymentList(LoginRequiredMixin, TemplateView):
                 **_list_ctx(self.request, self.request.GET.get("q"))}
 
 
+PAYABLE_STATUSES = [Client.Status.ACTIVE, Client.Status.OVERDUE]
+
+
 @login_required
 def client_lookup(request):
     """Búsqueda de cliente por cédula o nombre para el formulario de Pagos
-    (reemplaza el select por un buscador con registro inline si no existe)."""
+    (reemplaza el select por un buscador con registro inline si no existe).
+    Solo se puede pagar a clientes Activos o Morosos: congelados e
+    inactivos no aparecen entre los resultados."""
     q = request.GET.get("q", "").strip()
     clients = []
     if q:
         q_id = q.replace(".", "").replace("-", "")
         clients = Client.objects.filter(
-            Q(full_name__icontains=q) | Q(id_card__icontains=q_id)
+            Q(full_name__icontains=q) | Q(id_card__icontains=q_id), status__in=PAYABLE_STATUSES
         ).order_by("full_name")[:8]
     return render(request, "payments/_client_lookup.html", {"clients": clients, "q": q})
 
@@ -153,7 +164,7 @@ class PaymentCreate(LoginRequiredMixin, View):
         client_form = None
 
         if client_id:
-            client = Client.objects.filter(pk=client_id).first()
+            client = Client.objects.filter(pk=client_id, status__in=PAYABLE_STATUSES).first()
             if not client:
                 messages.error(request, "Selecciona un cliente válido de la lista.")
         else:

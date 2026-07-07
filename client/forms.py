@@ -1,6 +1,7 @@
 from django import forms
 from configuration.form_mixins import PlaceholderChoiceMixin
 from payments.forms import PaymentForm
+from plans.models import Plan
 from user.models import User
 from .models import Client, Membership, Freeze
 
@@ -64,6 +65,30 @@ class AddPlanForm(InitialPaymentForm):
         if client is not None:
             existing = client.memberships.values_list("plan_id", flat=True)
             self.fields["plan"].queryset = self.fields["plan"].queryset.exclude(pk__in=existing)
+
+
+class ChangePlanForm(PlaceholderChoiceMixin, forms.Form):
+    """Cambia el plan de una membresía existente por otro que el cliente
+    no tenga ya asignado. No es un pago nuevo: el monto y el vencimiento
+    se recalculan según el plan elegido, sin tocar los demás planes del
+    cliente."""
+    plan = forms.ModelChoiceField(queryset=Plan.objects.all(), label="Nuevo plan")
+    trainer = forms.ModelChoiceField(queryset=User.objects.filter(roles__contains=["INSTRUCTOR"]),
+                                      required=False, label="Entrenador")
+
+    def __init__(self, *args, membership=None, **kwargs):
+        self.membership = membership
+        super().__init__(*args, **kwargs)
+        if membership is not None:
+            existing = membership.client.memberships.values_list("plan_id", flat=True)
+            self.fields["plan"].queryset = self.fields["plan"].queryset.exclude(pk__in=existing)
+
+    def clean(self):
+        cleaned = super().clean()
+        plan = cleaned.get("plan")
+        if plan and plan.requires_trainer and not cleaned.get("trainer"):
+            self.add_error("trainer", "Asigna un entrenador (Boxeo/MMA).")
+        return cleaned
 
 
 class FreezeForm(forms.Form):

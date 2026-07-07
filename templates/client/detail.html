@@ -70,10 +70,15 @@
         <td>{{ m.start_date }}</td><td>{{ m.end_date|default:"—" }}</td>
         <td>{{ m.trainer.full_name|default:"—" }}</td>
         <td style="text-align:right">
+          <div class="row-actions">
+          {% if user.has_full_access and client.can_change_plan %}
+          <a class="icon-btn" href="?action=change_plan&membership={{ m.pk }}" title="Cambiar plan"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 1l4 4-4 4"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><path d="M7 23l-4-4 4-4"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg></a>
+          {% endif %}
           {% if user.has_full_access and memberships|length > 1 %}
           <form method="post" action="{% url 'client:membership_remove' m.pk %}" onsubmit="return confirm('¿Quitar este plan?')">{% csrf_token %}
             <button class="icon-btn del" title="Quitar">🗑</button></form>
           {% endif %}
+          </div>
         </td>
       </tr>
     {% empty %}<tr><td colspan="6">Sin planes. Usa “Agregar plan”.</td></tr>{% endfor %}
@@ -93,6 +98,7 @@
 </div>
 
 {% include "client/_membership_modal.html" %}
+{% include "client/_change_plan_modal.html" %}
 
 {% if show_form %}
 <div class="modal-overlay" data-close="{% url 'client:detail' client.pk %}">

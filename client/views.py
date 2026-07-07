@@ -13,9 +13,15 @@ from payments.views import _renew_membership
 from plans.models import Plan
 from user.permissions import FullAccessRequiredMixin, full_access_required
 from .models import Client, Membership, Freeze
-from .forms import ClientForm, FreezeForm, InitialPaymentForm, AddPlanForm
+from .forms import ClientForm, FreezeForm, InitialPaymentForm, AddPlanForm, ChangePlanForm
 
 TEMPLATE = "client/client.html"
+
+
+def _default_clients_queryset():
+    """Los clientes inactivos (baja lógica) no se listan salvo que se
+    filtre explícitamente por ese estatus."""
+    return Client.objects.exclude(status=Client.Status.INACTIVE).order_by("-created_at")
 
 
 def _back_url(frm, client):
@@ -48,6 +54,17 @@ def _membership_ctx(client, form, frm):
     }
 
 
+def _change_plan_ctx(membership, form, frm):
+    return {
+        "change_plan_form": form,
+        "show_change_plan": True,
+        "change_plan_membership": membership,
+        "change_plan_from": frm,
+        "change_plan_close_url": _back_url(frm, membership.client),
+        "plan_trainer_map_json": plan_trainer_map_json(),
+    }
+
+
 class ClientList(LoginRequiredMixin, ListView):
     model = Client
     template_name = TEMPLATE
@@ -69,6 +86,8 @@ class ClientList(LoginRequiredMixin, ListView):
             qs = qs.filter(Q(full_name__icontains=q) | Q(id_card__icontains=q_id))
         if status in dict(Client.Status.choices):
             qs = qs.filter(status=status)
+        else:
+            qs = qs.exclude(status=Client.Status.INACTIVE)
         if plan_id:
             qs = qs.filter(memberships__plan_id=plan_id).distinct()
         return qs
@@ -87,6 +106,12 @@ class ClientList(LoginRequiredMixin, ListView):
         if self.request.GET.get("action") == "membership" and self.request.GET.get("client"):
             target = get_object_or_404(Client, pk=self.request.GET["client"])
             ctx.update(_membership_ctx(target, AddPlanForm(client=target), "list"))
+        if self.request.GET.get("action") == "change_plan" and self.request.GET.get("membership"):
+            target_m = get_object_or_404(Membership, pk=self.request.GET["membership"])
+            if target_m.client.can_change_plan:
+                ctx.update(_change_plan_ctx(target_m, ChangePlanForm(membership=target_m), "list"))
+            else:
+                messages.error(self.request, "No se puede cambiar el plan a un cliente congelado o inactivo.")
         return ctx
 
 
@@ -116,8 +141,14 @@ def register_client_with_payment(client_form, payment_form, user):
         )
         trainer = payment_form.cleaned_data.get("trainer")
         if trainer:
-            membership.trainer = trainer
-            membership.save(update_fields=["trainer"])
+            # Los planes diarios no generan membresía: el entrenador de esa
+            # clase queda en el Pago en vez de en Membership.
+            if membership:
+                membership.trainer = trainer
+                membership.save(update_fields=["trainer"])
+            else:
+                payment.trainer = trainer
+                payment.save(update_fields=["trainer"])
     return client, membership
 
 
@@ -128,7 +159,7 @@ class ClientCreate(LoginRequiredMixin, View):
     template_name = TEMPLATE
 
     def _ctx(self, form, payment_form):
-        page = paginate(self.request, Client.objects.order_by("-created_at"))
+        page = paginate(self.request, _default_clients_queryset())
         return {
             "clients": page,
             "page_obj": page,
@@ -173,7 +204,7 @@ class ClientUpdate(LoginRequiredMixin, FullAccessRequiredMixin, UpdateView):
         if self._from() == "detail":
             ctx.update(detail_context(self.object))
         else:
-            page = paginate(self.request, Client.objects.order_by("-created_at"))
+            page = paginate(self.request, _default_clients_queryset())
             ctx["clients"] = page
             ctx["page_obj"] = page
         return ctx
@@ -188,22 +219,25 @@ class ClientUpdate(LoginRequiredMixin, FullAccessRequiredMixin, UpdateView):
 
 
 class ClientDelete(LoginRequiredMixin, FullAccessRequiredMixin, DeleteView):
+    """"Eliminar" nunca borra el registro: solo hace baja lógica (estatus
+    Inactivo), para conservar su historial de pagos, membresías y
+    asistencias. Deja de listarse salvo que se filtre por ese estatus."""
     model = Client
     template_name = TEMPLATE
     success_url = reverse_lazy("client:list")
 
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
-        page = paginate(self.request, Client.objects.order_by("-created_at"))
+        page = paginate(self.request, _default_clients_queryset())
         ctx["clients"] = page
         ctx["page_obj"] = page
         ctx["show_delete"] = True
         return ctx
 
     def form_valid(self, form):
-        response = super().form_valid(form)
+        self.object.deactivate()
         messages.success(self.request, "Cliente eliminado.")
-        return response
+        return redirect(self.success_url)
 
 
 def detail_context(client, **extra):
@@ -229,6 +263,12 @@ def client_detail(request, pk):
         extra = _membership_ctx(client, AddPlanForm(client=client), "detail")
     elif action == "freeze":
         extra = _freeze_ctx(client, FreezeForm(), "detail")
+    elif action == "change_plan" and request.GET.get("membership"):
+        target_m = get_object_or_404(Membership, pk=request.GET["membership"], client=client)
+        if client.can_change_plan:
+            extra = _change_plan_ctx(target_m, ChangePlanForm(membership=target_m), "detail")
+        else:
+            messages.error(request, "No se puede cambiar el plan a un cliente congelado o inactivo.")
     return render(request, "client/detail.html", detail_context(client, **extra))
 
 
@@ -260,18 +300,63 @@ def membership_add(request, pk):
             )
             trainer = form.cleaned_data.get("trainer")
             if trainer:
-                membership.trainer = trainer
-                membership.save(update_fields=["trainer"])
+                # Los planes diarios no generan membresía: el entrenador de esa
+                # clase queda en el Pago en vez de en Membership.
+                if membership:
+                    membership.trainer = trainer
+                    membership.save(update_fields=["trainer"])
+                else:
+                    payment.trainer = trainer
+                    payment.save(update_fields=["trainer"])
         messages.success(request, "Plan agregado.")
         return redirect(_back_url(frm, client))
 
     if frm == "list":
-        page = paginate(request, Client.objects.order_by("-created_at"))
+        page = paginate(request, _default_clients_queryset())
         ctx = {"clients": page, "page_obj": page}
         ctx.update(_membership_ctx(client, form, "list"))
         return render(request, TEMPLATE, ctx)
     return render(request, "client/detail.html",
                   detail_context(client, **_membership_ctx(client, form, "detail")))
+
+
+@login_required
+@full_access_required
+def membership_change_plan(request, pk):
+    """Cambia el plan de una membresía existente por otro: no genera un
+    pago nuevo, solo ajusta el plan, el monto (según el nuevo plan) y el
+    vencimiento (recalculado desde la misma fecha de inicio)."""
+    membership = get_object_or_404(Membership, pk=pk)
+    client = membership.client
+    frm = request.POST.get("from") or request.GET.get("from") or "detail"
+
+    if not client.can_change_plan:
+        messages.error(request, "No se puede cambiar el plan a un cliente congelado o inactivo.")
+        return redirect(_back_url(frm, client))
+
+    form = ChangePlanForm(request.POST or None, membership=membership)
+
+    if request.method == "POST" and form.is_valid():
+        plan = form.cleaned_data["plan"]
+        membership.plan = plan
+        membership.trainer = form.cleaned_data.get("trainer") if plan.requires_trainer else None
+        if not membership.is_custom:
+            membership.amount = plan.price(membership.currency)
+        membership.end_date = membership.compute_end_date()
+        update_fields = ["plan", "trainer", "amount", "end_date"]
+        if membership.is_custom:
+            update_fields.append("days")
+        membership.save(update_fields=update_fields)
+        messages.success(request, "Plan actualizado.")
+        return redirect(_back_url(frm, client))
+
+    if frm == "list":
+        page = paginate(request, _default_clients_queryset())
+        ctx = {"clients": page, "page_obj": page}
+        ctx.update(_change_plan_ctx(membership, form, "list"))
+        return render(request, TEMPLATE, ctx)
+    return render(request, "client/detail.html",
+                  detail_context(client, **_change_plan_ctx(membership, form, "detail")))
 
 
 @login_required
@@ -301,7 +386,7 @@ def client_freeze(request, pk):
         return redirect(_back_url(frm, client))
 
     if frm == "list":
-        page = paginate(request, Client.objects.order_by("-created_at"))
+        page = paginate(request, _default_clients_queryset())
         ctx = {"clients": page, "page_obj": page}
         ctx.update(_freeze_ctx(client, form, "list"))
         return render(request, TEMPLATE, ctx)

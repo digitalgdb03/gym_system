@@ -137,6 +137,19 @@
       endInput.value = suggestedEnd(start);
     }
 
+    // Si la fecha de inicio o de vencimiento se editan a mano y quedan
+    // invertidas (inicio posterior al vencimiento), se avisa y se limpia
+    // el campo recién tocado.
+    function checkDateOrder(input, other) {
+      if (!input.value || !other.value) return;
+      if (startInput.value > endInput.value) {
+        alert("La fecha de inicio no puede ser posterior a la fecha de vencimiento.");
+        input.value = "";
+      }
+    }
+    if (startInput) startInput.addEventListener("change", function () { checkDateOrder(startInput, endInput); });
+    if (endInput) endInput.addEventListener("change", function () { checkDateOrder(endInput, startInput); });
+
     if (planSelect) planSelect.addEventListener("change", function () { syncTrainer(); syncAmount(); syncDates(); });
     if (method) method.addEventListener("change", function () { syncMethodFields(); syncAmount(); syncDates(); });
     if (customCheck) customCheck.addEventListener("change", function () { syncAmount(); syncDates(); });

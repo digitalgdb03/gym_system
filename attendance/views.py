@@ -88,6 +88,15 @@ def mark_entry(request):
             request.session["client_not_found"] = {"doc_type": doc, "number": number}
             return redirect("attendance:list")
 
+        if client.status not in (Client.Status.ACTIVE, Client.Status.OVERDUE):
+            request.session["just_marked"] = {
+                "name": client.full_name, "id_card": client.full_id,
+                "status": client.status, "status_display": client.get_status_display(),
+                "message": f"Este cliente está {client.get_status_display().lower()} "
+                           "y no puede marcar asistencia.",
+            }
+            return redirect("attendance:list")
+
         today = timezone.localdate()
         open_entries = Attendance.objects.filter(client=client, check_out__isnull=True)
 

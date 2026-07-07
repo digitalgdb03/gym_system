@@ -165,6 +165,8 @@ def _clients_queryset(request):
         qs = qs.filter(Q(full_name__icontains=q) | Q(id_card__icontains=q_id))
     if status in dict(Client.Status.choices):
         qs = qs.filter(status=status)
+    else:
+        qs = qs.exclude(status=Client.Status.INACTIVE)
     if doc_type in dict(DocType.choices):
         qs = qs.filter(doc_type=doc_type)
     return qs

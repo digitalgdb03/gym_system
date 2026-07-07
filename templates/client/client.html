@@ -68,7 +68,7 @@
 <div class="modal-overlay" data-close="{% url 'client:list' %}">
   <div class="modal" role="dialog">
     <h3 class="modal-title">Eliminar cliente</h3>
-    <div class="modal-body"><p>¿Eliminar a <b>{{ object.full_name }}</b>? Se borran sus membresías, pagos y asistencias.</p></div>
+    <div class="modal-body"><p>¿Eliminar a <b>{{ object.full_name }}</b>? Queda inactivo y deja de aparecer en la lista; se conserva su historial de membresías, pagos y asistencias.</p></div>
     <form method="post">{% csrf_token %}
       <div class="modal-actions">
         <a class="btn btn-ghost" href="{% url 'client:list' %}">Cancelar</a>
@@ -81,6 +81,7 @@
 
 {% include "client/_freeze_modal.html" %}
 {% include "client/_membership_modal.html" %}
+{% include "client/_change_plan_modal.html" %}
 
 {% if membership_form %}
 <script>
@@ -192,6 +193,19 @@
       startInput.value = start;
       endInput.value = suggestedEnd(start);
     }
+
+    // Si la fecha de inicio o de vencimiento se editan a mano y quedan
+    // invertidas (inicio posterior al vencimiento), se avisa y se limpia
+    // el campo recién tocado.
+    function checkDateOrder(input, other) {
+      if (!input.value || !other.value) return;
+      if (startInput.value > endInput.value) {
+        alert("La fecha de inicio no puede ser posterior a la fecha de vencimiento.");
+        input.value = "";
+      }
+    }
+    if (startInput) startInput.addEventListener("change", function () { checkDateOrder(startInput, endInput); });
+    if (endInput) endInput.addEventListener("change", function () { checkDateOrder(endInput, startInput); });
 
     if (planSelect) planSelect.addEventListener("change", function () { syncTrainer(); syncAmount(); syncDates(); });
     if (method) method.addEventListener("change", function () { syncMethodFields(); syncAmount(); syncDates(); });

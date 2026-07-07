@@ -18,7 +18,12 @@
                 <b>{{ m.plan.label }}</b>
                 <span class="plan-stack-dates">{{ m.start_date|date:"d/m/Y" }} → {{ m.end_date|date:"d/m/Y"|default:"—" }}</span>
                 {% if m.trainer %}<span class="plan-stack-dates">Entrenador: {{ m.trainer.full_name }}</span>{% endif %}
-                {% with badge=m.days_badge %}{% if badge %}<span class="badge {{ badge.1 }}">{{ badge.0 }}</span>{% endif %}{% endwith %}
+                <div class="plan-stack-actions">
+                  {% with badge=m.days_badge %}{% if badge %}<span class="badge {{ badge.1 }}">{{ badge.0 }}</span>{% endif %}{% endwith %}
+                  {% if user.has_full_access and c.can_change_plan %}
+                  <a class="icon-btn" href="{% url 'client:list' %}?action=change_plan&membership={{ m.pk }}" title="Cambiar plan"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 1l4 4-4 4"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><path d="M7 23l-4-4 4-4"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg></a>
+                  {% endif %}
+                </div>
               </div>
             {% endfor %}
           </div>
