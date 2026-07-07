@@ -24,10 +24,6 @@ class ExchangeRate(models.Model):
     comparten una sola fila. El VIERNES conserva su propia tasa (no se toca).
     """
 
-    # Hora aprox. de publicación del BCV. En días hábiles no se auto-actualiza
-    # después de esta hora, para no capturar la tasa del próximo día hábil.
-    BCV_PUBLISH_HOUR = 15
-
     class Source(models.TextChoices):
         AUTO   = "AUTO",   "Automática (BCV)"
         MANUAL = "MANUAL", "Manual"
@@ -58,15 +54,6 @@ class ExchangeRate(models.Model):
         if wd == 6:
             return d + timedelta(days=1)
         return d                          # el viernes se queda en viernes
-
-    @classmethod
-    def can_auto_update(cls, now=None):
-        """En días hábiles solo se auto-actualiza antes de la publicación del BCV.
-        En fin de semana siempre (la API ya devuelve la tasa del lunes)."""
-        now = now or timezone.localtime()
-        if now.weekday() >= 5:            # sábado/domingo
-            return True
-        return now.hour < cls.BCV_PUBLISH_HOUR
 
     @classmethod
     def for_today(cls):

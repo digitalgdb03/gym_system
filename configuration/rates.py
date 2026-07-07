@@ -156,23 +156,22 @@ def fetch_bcv_rate_with_date(timeout=5):
 def update_today_rate(force=False):
     """Guarda la tasa del día (bajo su fecha efectiva). Devuelve la fila o None.
 
-    En días hábiles no actualiza automáticamente después de la hora de publicación
-    del BCV, para que el viernes conserve su tasa y no capture la del lunes.
+    Solo se busca "la próxima tasa" (la del lunes) cuando hoy es sábado o
+    domingo. El resto de los días se trabaja siempre con la tasa del día
+    actual, sin importar la hora a la que se haga el primer ingreso.
 
-    En fin de semana, la fuente consultada puede todavía estar reportando la tasa
-    del viernes (la del lunes aún no se publicó): en ese caso NO se guarda bajo la
-    fecha del lunes. Solo se persiste cuando se puede confirmar (por la "Fecha
-    Valor" de bcv.org.ve, o la fecha que reporten los espejos de respaldo) que la
-    tasa obtenida ya corresponde al lunes o después. Si no se puede confirmar, se
-    reintenta más tarde (o el lunes la actualización normal de día hábil la
-    corrige).
+    La fecha de valor que reporta la fuente ("Fecha Valor" de bcv.org.ve, o la
+    fecha que reporten los espejos de respaldo) se usa para validar que lo
+    obtenido realmente corresponde al día esperado:
+    - Fin de semana: si la fuente todavía reporta la tasa del viernes (o no se
+      puede confirmar su fecha), no se guarda como la del lunes.
+    - Cualquier día: si la fuente ya reporta la tasa del día siguiente (p. ej.
+      el BCV la publicó anticipadamente en la tarde/noche), tampoco se guarda
+      bajo la fecha de hoy.
+    En ambos casos se reintenta más tarde en vez de guardar un valor incorrecto.
     """
     global _last_attempt
     from .models import ExchangeRate
-
-    # Protección: en día hábil por la tarde no auto-actualizamos (salvo force manual).
-    if not force and not ExchangeRate.can_auto_update():
-        return ExchangeRate.for_today()
 
     eff = ExchangeRate.effective_date()          # hoy, o el lunes si es finde
     is_weekend = eff != timezone.localdate()
@@ -187,8 +186,13 @@ def update_today_rate(force=False):
     if rate is None:
         return None
 
-    if is_weekend and (published is None or published < eff):
-        return existing   # no se puede confirmar que ya es la tasa del lunes: no la guardes
+    if published is not None:
+        if published > eff:
+            return existing   # la fuente ya muestra la tasa del día siguiente: no es la de hoy
+        if is_weekend and published < eff:
+            return existing   # todavía es la tasa del viernes, no la del lunes
+    elif is_weekend:
+        return existing       # sin fecha confirmada, no se puede saber si ya es la del lunes
 
     obj, _ = ExchangeRate.objects.update_or_create(
         date=eff, defaults={"rate": rate, "source": ExchangeRate.Source.AUTO}
