@@ -135,6 +135,7 @@
 
         {% if user.is_authenticated %}
         <div class="user-menu">
+          <span class="user-name">{{ user.full_name|default:user.username }}</span>
           <button class="avatar" id="avatarBtn" title="Cuenta">{{ user.full_name|default:user.username|initials }}</button>
           <div class="user-dropdown" id="userMenu" style="display:none">
             <button type="button" onclick="location.href='{% url 'user:profile' %}'">Mi perfil</button>

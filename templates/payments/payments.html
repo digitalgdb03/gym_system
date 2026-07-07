@@ -108,6 +108,7 @@
           {% if field.field.widget.input_type == "checkbox" %}
             <div class="field field-check" data-field="{{ field.name }}">
               <label class="check">{% render_field field %}<span>{{ field.label }}</span></label>
+              {% if field.help_text %}<div class="field-hint">{{ field.help_text }}</div>{% endif %}
               {% for e in field.errors %}<div class="msg error">{{ e }}</div>{% endfor %}
             </div>
           {% else %}
@@ -153,14 +154,98 @@
     }
 
     var clientPlans = {{ client_plans_json|default:"{}"|safe }};
+    var clientPlanEndDates = {{ client_plan_end_dates_json|default:"{}"|safe }};
     var planPrices = {{ plan_prices_json|default:"{}"|safe }};
     var bcvRate = parseFloat("{{ gym.bcv_rate|default:'0' }}".replace(",", ".")) || 0;
 
-    // Muestra "Monto en USD" solo para Efectivo (USD); "Monto en Bs" para los demás métodos.
+    var startField = form.querySelector('[data-field="start_date"]');
+    var endField = form.querySelector('[data-field="end_date"]');
+    var startInput = startField ? startField.querySelector("input") : null;
+    var endInput = endField ? endField.querySelector("input") : null;
+
+    // Métodos que se cobran en USD/divisas (no en bolívares).
+    var CASH_METHODS = ["CASH_USD", "ZELLE", "BINANCE"];
+    function isCashMethod(value) { return CASH_METHODS.indexOf(value) !== -1; }
+
+    // Muestra "Monto en USD" para efectivo/Zelle/Binance; "Monto en Bs" para los demás métodos.
     function syncMethodFields() {
-      var isUsd = method && method.value === "CASH_USD";
+      var isUsd = method && isCashMethod(method.value);
       if (usdField) usdField.style.display = isUsd ? "" : "none";
       if (bsField) bsField.style.display = isUsd ? "none" : "";
+    }
+
+    function toISO(d) { return d.toISOString().slice(0, 10); }
+
+    function addDays(dateStr, days) {
+      var d = new Date(dateStr + "T00:00:00");
+      d.setDate(d.getDate() + days);
+      return toISO(d);
+    }
+
+    // Igual que dateutil.relativedelta(months=1) del lado del servidor:
+    // si el mes destino no tiene ese día, se ajusta al último día del mes.
+    function addMonthsClamped(dateStr, months) {
+      var d = new Date(dateStr + "T00:00:00");
+      var day = d.getDate();
+      d.setDate(1);
+      d.setMonth(d.getMonth() + months);
+      var dim = new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate();
+      d.setDate(Math.min(day, dim));
+      return toISO(d);
+    }
+
+    function daysInMonthOf(dateStr) {
+      var d = new Date(dateStr + "T00:00:00");
+      return new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate();
+    }
+
+    // Sugiere el inicio del plan: si el cliente ya tiene ese plan vigente,
+    // arranca donde vence; si no, hoy (mismo criterio que _renew_membership).
+    function suggestedStart() {
+      var planId = planSelect ? planSelect.value : "";
+      var clientId = clientIdField ? clientIdField.value : "";
+      var ends = (clientId && clientPlanEndDates[clientId]) || {};
+      var existingEnd = ends[planId];
+      var todayISO = toISO(new Date());
+      if (existingEnd && existingEnd > todayISO) return existingEnd;
+      return todayISO;
+    }
+
+    // Sugiere el vencimiento: duración normal del plan, o los días que
+    // alcance el monto si el pago es personalizado.
+    function suggestedEnd(startStr) {
+      var planId = planSelect ? planSelect.value : "";
+      var info = planPrices[planId];
+      var isCustom = customCheck && customCheck.checked;
+      if (isCustom) {
+        var amount = NaN, price = NaN;
+        if (method && isCashMethod(method.value)) {
+          amount = usdInput ? parseFloat(usdInput.value) : NaN;
+          price = info ? parseFloat(info.cash) : NaN;
+        } else {
+          var bsVal = bsInput ? parseFloat(bsInput.value) : NaN;
+          amount = (bcvRate && !isNaN(bsVal)) ? bsVal / bcvRate : NaN;
+          price = info ? parseFloat(info.bcv) : NaN;
+        }
+        if (!isNaN(amount) && price) {
+          var perDay = price / daysInMonthOf(startStr);
+          var days = perDay ? Math.floor(amount / perDay) : 0;
+          return addDays(startStr, days);
+        }
+        return startStr;
+      }
+      if (!info) return startStr;
+      if (info.duration === "DAILY") return addDays(startStr, 1);
+      if (info.duration === "WEEKLY") return addDays(startStr, 7);
+      return addMonthsClamped(startStr, 1);
+    }
+
+    // Autocompleta inicio/vencimiento; el usuario puede editarlos a mano.
+    function syncDates() {
+      if (!startInput || !endInput || !planSelect || !planSelect.value) return;
+      var start = suggestedStart();
+      startInput.value = start;
+      endInput.value = suggestedEnd(start);
     }
 
     // Si el cliente ya existe y tiene planes propios, solo se muestran esos
@@ -188,7 +273,7 @@
       if (isCustom || !planSelect || !method) return;
       var price = planPrices[planSelect.value];
       if (!price) return;
-      if (method.value === "CASH_USD") {
+      if (isCashMethod(method.value)) {
         if (usdInput) usdInput.value = price.cash;
       } else if (bcvRate) {
         if (bsInput) bsInput.value = (parseFloat(price.bcv) * bcvRate).toFixed(2);
@@ -234,6 +319,7 @@
       setNewClientRequired(true);
       prefillNewClient(clientSearch.value.trim());
       syncPlanOptions();
+      syncDates();
     }
 
     function hideNewClientFields() {
@@ -249,6 +335,7 @@
       clientResults.style.display = "none";
       hideNewClientFields();
       syncPlanOptions();
+      syncDates();
     }
 
     var searchTimer;
@@ -308,9 +395,11 @@
       });
     }
 
-    if (method) method.addEventListener("change", function () { syncMethodFields(); syncAmount(); });
-    if (planSelect) planSelect.addEventListener("change", syncAmount);
-    if (customCheck) customCheck.addEventListener("change", syncAmount);
+    if (method) method.addEventListener("change", function () { syncMethodFields(); syncAmount(); syncDates(); });
+    if (planSelect) planSelect.addEventListener("change", function () { syncAmount(); syncDates(); });
+    if (customCheck) customCheck.addEventListener("change", function () { syncAmount(); syncDates(); });
+    if (usdInput) usdInput.addEventListener("input", syncDates);
+    if (bsInput) bsInput.addEventListener("input", syncDates);
 
     {% if client_form.is_bound %}
     showNewClientFields();
@@ -321,6 +410,7 @@
     syncPlanOptions();
     syncMethodFields();
     syncAmount();
+    syncDates();
   })();
 </script>
 {% endif %}

@@ -7,22 +7,10 @@
       <input type="hidden" name="from" value="{{ freeze_from }}">
       <div class="modal-body">
         {% for field in freeze_form %}
-          {% if field.name == "kind" %}
-            <div class="field">
-              <label>{{ field.label }}</label>
-              <div class="check-grid">
-                {% for choice in field %}
-                  <div class="field-check"><label class="check">{{ choice.tag }}<span>{{ choice.choice_label }}</span></label></div>
-                {% endfor %}
-              </div>
-              {% for e in field.errors %}<div class="msg error">{{ e }}</div>{% endfor %}
-            </div>
-          {% else %}
-            <div class="field" data-field="{{ field.name }}"><label>{{ field.label }}</label>{% render_field field class="input" %}
-              {% for e in field.errors %}<div class="msg error">{{ e }}</div>{% endfor %}</div>
-          {% endif %}
+          <div class="field" data-field="{{ field.name }}"><label>{{ field.label }}</label>{% render_field field class="input" %}
+            {% for e in field.errors %}<div class="msg error">{{ e }}</div>{% endfor %}</div>
         {% endfor %}
-        <div class="section-note">En días/meses se extenderá el vencimiento de <b>todas</b> las membresías por ese tiempo. En indefinido, se extenderá lo que dure la congelación al descongelar.</div>
+        <div class="section-note">Tope de <b>15 días</b>: se extenderá el vencimiento de <b>todas</b> las membresías según los días indicados. Pasado ese plazo (o antes, si descongelas manualmente) el cliente se reactiva y su plan sigue contando.</div>
       </div>
       <div class="modal-actions">
         <a class="btn btn-ghost" href="{{ freeze_close_url }}">Cancelar</a>
@@ -31,21 +19,4 @@
     </form>
   </div>
 </div>
-<script>
-  (function () {
-    var form = document.getElementById("freezeForm");
-    if (!form) return;
-    var radios = form.querySelectorAll('input[name="kind"]');
-    var daysField = form.querySelector('[data-field="days"]');
-    var monthsField = form.querySelector('[data-field="months"]');
-    function sync() {
-      var checked = form.querySelector('input[name="kind"]:checked');
-      var kind = checked ? checked.value : "DAYS";
-      if (daysField) daysField.style.display = (kind === "DAYS") ? "" : "none";
-      if (monthsField) monthsField.style.display = (kind === "MONTHS") ? "" : "none";
-    }
-    radios.forEach(function (r) { r.addEventListener("change", sync); });
-    sync();
-  })();
-</script>
 {% endif %}

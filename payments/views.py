@@ -11,7 +11,7 @@ from django.views.generic import TemplateView, View
 
 from client.forms import ClientForm
 from client.models import Client, Membership
-from configuration.utils import is_ajax, paginate, client_plans_json, plan_prices_json
+from configuration.utils import is_ajax, paginate, client_plans_json, client_plan_end_dates_json, plan_prices_json
 from .models import Payment
 from .forms import PaymentForm
 from attendance.models import Attendance
@@ -19,28 +19,33 @@ from attendance.models import Attendance
 TEMPLATE = "payments/payments.html"
 
 
-def _renew_membership(client, plan, user=None, is_custom=False, amount=None, currency=None):
+def _renew_membership(client, plan, user=None, is_custom=False, amount=None, currency=None,
+                      start_override=None, end_override=None):
     """El pago renueva el plan: extiende el vencimiento de la membresía
-    (desde hoy si no tenía deuda de asistencia, o desde su vencimiento 
+    (desde hoy si no tenía deuda de asistencia, o desde su vencimiento
     si asistió al gimnasio estando moroso).
     Si el pago es personalizado, los días se calculan según el monto pagado
-    en vez de usar la duración completa del plan."""
-    
+    en vez de usar la duración completa del plan.
+    start_override/end_override: si el usuario editó las fechas sugeridas
+    en el formulario, se respetan en vez de calcularlas."""
+
     membership = client.memberships.filter(plan=plan).order_by("-end_date").first()
     today = date.today()
-    
+
     # NUEVA LÓGICA DE RENOVACIÓN
-    if membership and membership.end_date:
+    if start_override:
+        start = start_override
+    elif membership and membership.end_date:
         if membership.end_date > today:
             # Aún vigente: se suma a partir de su vencimiento futuro
             start = membership.end_date
         else:
             # Vencido: buscamos si asistió estando moroso
             has_attended = Attendance.objects.filter(
-                client=client, 
+                client=client,
                 check_in__date__gt=membership.end_date
             ).exists()
-            
+
             if has_attended:
                 # Asistió: se cobra desde la fecha en que venció
                 start = membership.end_date
@@ -51,12 +56,14 @@ def _renew_membership(client, plan, user=None, is_custom=False, amount=None, cur
         # Cliente nuevo sin membresías previas
         start = today
 
-    if is_custom and amount:
+    if end_override:
+        end = end_override
+    elif is_custom and amount:
         days = plan.prorated_days(amount, currency, start)
         end = start + timedelta(days=days)
     else:
         end = plan.end_date_from(start)
-        
+
     if membership:
         # start_date también se actualiza: siempre debe reflejar el inicio
         # del período vigente/recién pagado, no el primer pago histórico.
@@ -80,6 +87,7 @@ def _today_stats():
 
 def _list_ctx(request, q=""):
     payments = (Payment.objects.select_related("client", "plan", "plan__service")
+                .prefetch_related("client__memberships__plan__service", "client__memberships__trainer")
                 .order_by("-created_at"))
     q = (q or "").strip()
     if q:
@@ -125,6 +133,7 @@ class PaymentCreate(LoginRequiredMixin, View):
     def _ctx(self, form, client_form=None, client_search="", client_id=""):
         ctx = {**_today_stats(), **_list_ctx(self.request)}
         ctx["client_plans_json"] = client_plans_json()
+        ctx["client_plan_end_dates_json"] = client_plan_end_dates_json()
         ctx["plan_prices_json"] = plan_prices_json()
         ctx["show_form"] = True
         ctx["form"] = form
@@ -163,7 +172,9 @@ class PaymentCreate(LoginRequiredMixin, View):
                 payment.created_by = request.user
                 payment.save()
                 _renew_membership(client, payment.plan, user=request.user, is_custom=payment.is_custom,
-                                  amount=payment.amount_usd, currency=payment.currency)
+                                  amount=payment.amount_usd, currency=payment.currency,
+                                  start_override=form.cleaned_data.get("start_date"),
+                                  end_override=form.cleaned_data.get("end_date"))
             messages.success(request, "Pago guardado.")
             return redirect("payments:list")
 

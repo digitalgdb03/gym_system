@@ -43,6 +43,7 @@
             {% if field.field.widget.input_type == "checkbox" %}
               <div class="field field-check" data-field="{{ field.name }}">
                 <label class="check">{% render_field field %}<span>{{ field.label }}</span></label>
+                {% if field.help_text %}<div class="field-hint">{{ field.help_text }}</div>{% endif %}
                 {% for e in field.errors %}<div class="msg error">{{ e }}</div>{% endfor %}
               </div>
             {% else %}
@@ -98,6 +99,14 @@
     var usdInput = usdField ? usdField.querySelector("input") : null;
     var bsInput = bsField ? bsField.querySelector("input") : null;
     var customCheck = form.querySelector('[name="is_custom"]');
+    var startField = form.querySelector('[data-field="start_date"]');
+    var endField = form.querySelector('[data-field="end_date"]');
+    var startInput = startField ? startField.querySelector("input") : null;
+    var endInput = endField ? endField.querySelector("input") : null;
+
+    // Métodos que se cobran en USD/divisas (no en bolívares).
+    var CASH_METHODS = ["CASH_USD", "ZELLE", "BINANCE"];
+    function isCashMethod(value) { return CASH_METHODS.indexOf(value) !== -1; }
 
     // Muestra el campo de entrenador solo si el plan elegido lo exige (Boxeo/MMA).
     function syncTrainer() {
@@ -105,9 +114,9 @@
       trainerField.style.display = trainerNeeded[planSelect.value] ? "" : "none";
     }
 
-    // Muestra "Monto en USD" solo para Efectivo (USD); "Monto en Bs" para los demás métodos.
+    // Muestra "Monto en USD" para efectivo/Zelle/Binance; "Monto en Bs" para los demás métodos.
     function syncMethodFields() {
-      var isUsd = method && method.value === "CASH_USD";
+      var isUsd = method && isCashMethod(method.value);
       if (usdField) usdField.style.display = isUsd ? "" : "none";
       if (bsField) bsField.style.display = isUsd ? "none" : "";
     }
@@ -120,20 +129,80 @@
       if (isCustom || !planSelect || !method) return;
       var price = planPrices[planSelect.value];
       if (!price) return;
-      if (method.value === "CASH_USD") {
+      if (isCashMethod(method.value)) {
         if (usdInput) usdInput.value = price.cash;
       } else if (bcvRate) {
         if (bsInput) bsInput.value = (parseFloat(price.bcv) * bcvRate).toFixed(2);
       }
     }
 
-    if (planSelect) planSelect.addEventListener("change", function () { syncTrainer(); syncAmount(); });
-    if (method) method.addEventListener("change", function () { syncMethodFields(); syncAmount(); });
-    if (customCheck) customCheck.addEventListener("change", syncAmount);
+    function toISO(d) { return d.toISOString().slice(0, 10); }
+
+    function addDays(dateStr, days) {
+      var d = new Date(dateStr + "T00:00:00");
+      d.setDate(d.getDate() + days);
+      return toISO(d);
+    }
+
+    function addMonthsClamped(dateStr, months) {
+      var d = new Date(dateStr + "T00:00:00");
+      var day = d.getDate();
+      d.setDate(1);
+      d.setMonth(d.getMonth() + months);
+      var dim = new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate();
+      d.setDate(Math.min(day, dim));
+      return toISO(d);
+    }
+
+    function daysInMonthOf(dateStr) {
+      var d = new Date(dateStr + "T00:00:00");
+      return new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate();
+    }
+
+    // Cliente siempre nuevo aquí: el inicio siempre es hoy.
+    function suggestedEnd(startStr) {
+      var info = planPrices[planSelect ? planSelect.value : ""];
+      var isCustom = customCheck && customCheck.checked;
+      if (isCustom) {
+        var amount = NaN, price = NaN;
+        if (method && isCashMethod(method.value)) {
+          amount = usdInput ? parseFloat(usdInput.value) : NaN;
+          price = info ? parseFloat(info.cash) : NaN;
+        } else {
+          var bsVal = bsInput ? parseFloat(bsInput.value) : NaN;
+          amount = (bcvRate && !isNaN(bsVal)) ? bsVal / bcvRate : NaN;
+          price = info ? parseFloat(info.bcv) : NaN;
+        }
+        if (!isNaN(amount) && price) {
+          var perDay = price / daysInMonthOf(startStr);
+          var days = perDay ? Math.floor(amount / perDay) : 0;
+          return addDays(startStr, days);
+        }
+        return startStr;
+      }
+      if (!info) return startStr;
+      if (info.duration === "DAILY") return addDays(startStr, 1);
+      if (info.duration === "WEEKLY") return addDays(startStr, 7);
+      return addMonthsClamped(startStr, 1);
+    }
+
+    function syncDates() {
+      if (!startInput || !endInput || !planSelect || !planSelect.value) return;
+      var start = toISO(new Date());
+      startInput.value = start;
+      endInput.value = suggestedEnd(start);
+    }
+
+    if (planSelect) planSelect.addEventListener("change", function () { syncTrainer(); syncAmount(); syncDates(); });
+    if (method) method.addEventListener("change", function () { syncMethodFields(); syncAmount(); syncDates(); });
+    if (customCheck) customCheck.addEventListener("change", function () { syncAmount(); syncDates(); });
+    if (usdInput) usdInput.addEventListener("input", syncDates);
+    if (bsInput) bsInput.addEventListener("input", syncDates);
 
     syncTrainer();
     syncMethodFields();
     syncAmount();
+    syncDates();
   })();
 </script>
 {% endif %}

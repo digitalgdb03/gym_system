@@ -7,7 +7,7 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse, reverse_lazy
 from django.views.generic import ListView, View, UpdateView, DeleteView
 
-from configuration.utils import is_ajax, paginate, plan_trainer_map_json, plan_prices_json
+from configuration.utils import is_ajax, paginate, plan_trainer_map_json, plan_prices_json, client_plan_end_dates_json
 from payments.models import Payment
 from payments.views import _renew_membership
 from plans.models import Plan
@@ -44,6 +44,7 @@ def _membership_ctx(client, form, frm):
         "membership_close_url": _back_url(frm, client),
         "plan_trainer_map_json": plan_trainer_map_json(),
         "plan_prices_json": plan_prices_json(),
+        "client_plan_end_dates_json": client_plan_end_dates_json(),
     }
 
 
@@ -110,6 +111,8 @@ def register_client_with_payment(client_form, payment_form, user):
         membership = _renew_membership(
             client, plan, user=user, is_custom=payment.is_custom,
             amount=payment.amount_usd, currency=payment.currency,
+            start_override=payment_form.cleaned_data.get("start_date"),
+            end_override=payment_form.cleaned_data.get("end_date"),
         )
         trainer = payment_form.cleaned_data.get("trainer")
         if trainer:
@@ -134,6 +137,7 @@ class ClientCreate(LoginRequiredMixin, View):
             "membership_form": payment_form,
             "plan_trainer_map_json": plan_trainer_map_json(),
             "plan_prices_json": plan_prices_json(),
+            "client_plan_end_dates_json": client_plan_end_dates_json(),
         }
 
     def get(self, request):
@@ -251,6 +255,8 @@ def membership_add(request, pk):
             membership = _renew_membership(
                 client, plan, user=request.user, is_custom=payment.is_custom,
                 amount=payment.amount_usd, currency=payment.currency,
+                start_override=form.cleaned_data.get("start_date"),
+                end_override=form.cleaned_data.get("end_date"),
             )
             trainer = form.cleaned_data.get("trainer")
             if trainer:
@@ -290,9 +296,7 @@ def client_freeze(request, pk):
     frm = request.POST.get("from") or request.GET.get("from") or "detail"
     form = FreezeForm(request.POST or None)
     if request.method == "POST" and form.is_valid():
-        kind = form.cleaned_data["kind"]
-        amount = form.cleaned_data["days"] if kind == Freeze.Kind.DAYS else form.cleaned_data["months"]
-        client.freeze(form.cleaned_data["reason"], kind, amount, user=request.user)
+        client.freeze(form.cleaned_data["reason"], Freeze.Kind.DAYS, form.cleaned_data["days"], user=request.user)
         messages.success(request, "Membresía congelada.")
         return redirect(_back_url(frm, client))
 

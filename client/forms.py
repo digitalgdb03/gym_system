@@ -43,7 +43,8 @@ class InitialPaymentForm(PaymentForm):
     class Meta(PaymentForm.Meta):
         fields = ["plan", "trainer", "method", "amount_usd", "amount_bs", "is_custom"]
 
-    field_order = ["plan", "trainer", "method", "amount_usd", "amount_bs", "is_custom"]
+    field_order = ["plan", "trainer", "method", "amount_usd", "amount_bs", "is_custom",
+                  "start_date", "end_date"]
 
     def clean(self):
         cleaned = super().clean()
@@ -66,17 +67,7 @@ class AddPlanForm(InitialPaymentForm):
 
 
 class FreezeForm(forms.Form):
+    """Congelación en días, con tope de Client.MAX_FREEZE_DAYS; no hay otras
+    opciones de tipo (meses/indefinido)."""
     reason = forms.CharField(label="Motivo", max_length=160)
-    kind   = forms.ChoiceField(label="Tipo de congelación", choices=Freeze.Kind.choices,
-                               widget=forms.RadioSelect, initial=Freeze.Kind.DAYS)
-    days   = forms.IntegerField(label="Cantidad de días", min_value=1, required=False)
-    months = forms.IntegerField(label="Cantidad de meses", min_value=1, required=False)
-
-    def clean(self):
-        cleaned = super().clean()
-        kind = cleaned.get("kind")
-        if kind == Freeze.Kind.DAYS and not cleaned.get("days"):
-            self.add_error("days", "Indica la cantidad de días.")
-        elif kind == Freeze.Kind.MONTHS and not cleaned.get("months"):
-            self.add_error("months", "Indica la cantidad de meses.")
-        return cleaned
+    days = forms.IntegerField(label="Cantidad de días", min_value=1, max_value=Client.MAX_FREEZE_DAYS)

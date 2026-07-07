@@ -10,7 +10,7 @@ from django.utils import timezone
 from client.forms import ClientForm, InitialPaymentForm
 from client.models import Client
 from client.views import register_client_with_payment
-from configuration.utils import is_ajax, paginate, plan_prices_json, plan_trainer_map_json
+from configuration.utils import is_ajax, paginate, plan_prices_json, plan_trainer_map_json, client_plan_end_dates_json
 from .models import Attendance, normalize_id
 
 
@@ -37,16 +37,24 @@ def _list_context(request):
 
 
 def _mark_attendance(client, user):
-    """Registra la entrada de hoy y arma la tarjeta de estatus + plan."""
+    """Registra la entrada de hoy y arma la tarjeta de estatus + todos los
+    planes del cliente (inicio, fin, días y entrenador de cada uno)."""
     Attendance.objects.create(client=client, created_by=user)
+    plans = []
+    for m in client.memberships.select_related("plan", "trainer").all():
+        badge = m.days_badge
+        plans.append({
+            "label": m.plan.label,
+            "start": m.start_date.strftime("%d/%m/%Y") if m.start_date else "",
+            "end": m.end_date.strftime("%d/%m/%Y") if m.end_date else "",
+            "days_label": badge[0] if badge else "",
+            "days_class": badge[1] if badge else "",
+            "trainer": m.trainer.full_name if m.trainer else "",
+        })
     return {
         "name": client.full_name, "id_card": client.full_id,
         "status": client.status, "status_display": client.get_status_display(),
-        "plan": client.plans_summary or "Sin plan",
-        "trainer": client.trainers_summary or "—",
-        "plan_start": client.plan_start_date.strftime("%d/%m/%Y") if client.plan_start_date else "",
-        "plan_end": client.next_due_date.strftime("%d/%m/%Y") if client.next_due_date else "",
-        "plan_days_label": client.plan_days_label,
+        "plans": plans,
     }
 
 
@@ -131,6 +139,7 @@ def register_client(request):
         "register_payment_form": payment_form,
         "plan_trainer_map_json": plan_trainer_map_json(),
         "plan_prices_json": plan_prices_json(),
+        "client_plan_end_dates_json": client_plan_end_dates_json(),
     })
     return render(request, "attendance/list.html", ctx)
 

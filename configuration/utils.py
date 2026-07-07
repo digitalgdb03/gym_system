@@ -38,10 +38,26 @@ def client_plans_json():
 
 
 def plan_prices_json():
-    """{'<plan_id>': {'bcv': precio, 'cash': precio}} para autocompletar el
-    monto a pagar según el plan y el método elegidos."""
+    """{'<plan_id>': {'bcv': precio, 'cash': precio, 'duration': 'DAILY'|
+    'WEEKLY'|'MONTHLY'}} para autocompletar el monto y calcular la fecha de
+    vencimiento sugerida según el plan y el método elegidos."""
     from plans.models import Plan
     return json.dumps({
-        str(p.pk): {"bcv": str(p.price_bcv), "cash": str(p.price_cash)}
+        str(p.pk): {"bcv": str(p.price_bcv), "cash": str(p.price_cash), "duration": p.duration}
         for p in Plan.objects.all()
     })
+
+
+def client_plan_end_dates_json():
+    """{'<client_id>': {'<plan_id>': 'YYYY-MM-DD'}} = vencimiento actual de
+    cada plan que ya tiene el cliente, para sugerir la fecha de inicio del
+    nuevo período al renovar (mismo criterio que _renew_membership: si aún
+    no vence, el nuevo período arranca donde termina el actual)."""
+    from client.models import Client
+    data = {}
+    for c in Client.objects.prefetch_related("memberships"):
+        data[str(c.pk)] = {
+            str(m.plan_id): m.end_date.isoformat()
+            for m in c.memberships.all() if m.end_date
+        }
+    return json.dumps(data)

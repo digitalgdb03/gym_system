@@ -24,7 +24,14 @@
           </div>
         {% else %}<span style="color:var(--muted)">Sin plan</span>{% endif %}
       </td>
-      <td data-label="Estado"><span class="badge {{ c.status_badge_class }}">{{ c.get_status_display }}</span></td>
+      <td data-label="Estado">
+        <span class="badge {{ c.status_badge_class }}">{{ c.get_status_display }}</span>
+        {% if c.status == 'FROZEN' and c.current_freeze %}
+          <div style="color:var(--muted);font-size:12px;margin-top:4px">
+            Desde {{ c.current_freeze.start_date|date:"d/m/Y" }} · {{ c.freeze_days_remaining }} días para reactivar
+          </div>
+        {% endif %}
+      </td>
       <td data-label="Ingreso">{{ c.created_at|date:"d/m/Y" }}</td>
       <td data-label="Teléfono">{{ c.phone|default:"—" }}</td>
       <td data-label="">

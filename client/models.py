@@ -9,6 +9,8 @@ from plans.models import Plan
 
 
 class Client(CreatedByModel):
+    MAX_FREEZE_DAYS = 15
+
     class Status(models.TextChoices):
         ACTIVE  = "ACTIVE",  "Activo"
         FROZEN  = "FROZEN",  "Congelado"
@@ -59,6 +61,15 @@ class Client(CreatedByModel):
     @property
     def current_freeze(self):
         return self.freezes.first() if self.status == self.Status.FROZEN else None
+
+    @property
+    def freeze_days_remaining(self):
+        """Días que faltan para la reactivación automática (tope de
+        MAX_FREEZE_DAYS días de congelación)."""
+        freeze = self.current_freeze
+        if not freeze or not freeze.end_date:
+            return None
+        return max((freeze.end_date - date.today()).days, 0)
     
     @property
     def plans_summary(self):
@@ -122,31 +133,33 @@ class Client(CreatedByModel):
         return ""
 
     def freeze(self, reason, kind, amount=None, start=None, user=None):
+        """La congelación siempre queda topada a MAX_FREEZE_DAYS días; pasado
+        ese tiempo el cliente se reactiva solo (ver recompute_status)."""
         start = start or date.today()
         self.status = self.Status.FROZEN
         self.save(update_fields=["status"])
 
         if kind == Freeze.Kind.DAYS:
-            days = amount
-            end_date = start + timedelta(days=days)
+            days = min(amount, self.MAX_FREEZE_DAYS)
         elif kind == Freeze.Kind.MONTHS:
-            end_date = start + relativedelta(months=amount)
-            days = (end_date - start).days
+            raw_end = start + relativedelta(months=amount)
+            days = min((raw_end - start).days, self.MAX_FREEZE_DAYS)
         else:
-            days, end_date = None, None
+            days = self.MAX_FREEZE_DAYS
+        end_date = start + timedelta(days=days)
 
         self.freezes.create(reason=reason, kind=kind, days=days,
                             start_date=start, end_date=end_date, created_by=user)
-        if days:
-            for m in self.memberships.all():
-                if m.end_date:
-                    m.end_date = m.end_date + timedelta(days=days)
-                    m.save()
+        for m in self.memberships.all():
+            if m.end_date:
+                m.end_date = m.end_date + timedelta(days=days)
+                m.save()
         return self
 
     def unfreeze(self):
         freeze = self.current_freeze
-        if freeze and freeze.kind == Freeze.Kind.INDEFINITE:
+        if freeze and freeze.end_date is None:
+            # Congelaciones antiguas sin tope registrado (antes de este cambio).
             elapsed = (date.today() - freeze.start_date).days
             if elapsed:
                 for m in self.memberships.all():
@@ -159,9 +172,12 @@ class Client(CreatedByModel):
 
     def recompute_status(self):
         """Pasa a Moroso si alguna membresía venció (end_date < hoy) y a
-        Activo si ninguna está vencida. La congelación es manual y no se
-        toca aquí."""
+        Activo si ninguna está vencida. Si está Congelado y ya pasó el tope
+        de MAX_FREEZE_DAYS días, se reactiva solo y su plan sigue contando."""
         if self.status == self.Status.FROZEN:
+            freeze = self.current_freeze
+            if freeze and freeze.end_date and date.today() >= freeze.end_date:
+                self.unfreeze()
             return self
         today = date.today()
         overdue = any(m.end_date and m.end_date < today for m in self.memberships.all())

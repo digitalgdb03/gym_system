@@ -380,6 +380,7 @@ tbody tr:hover { background: #fafbfd; }
   .menu-toggle { width: 38px; height: 38px; }
   .avatar { width: 36px; height: 36px; font-size: 13px; }
   .cols-2 { grid-template-columns: 1fr; }
+  .user-name { display: none; }
 }
 @media (max-width: 430px) {
   .topbar { gap: 7px; padding-left: 12px; padding-right: 12px; }
@@ -454,7 +455,8 @@ tbody tr:hover { background: #fafbfd; }
 }
 
 /* Menú del avatar */
-.user-menu { position: relative; }
+.user-menu { position: relative; display: flex; align-items: center; gap: 10px; }
+.user-name { font-size: 14px; font-weight: 600; color: var(--ink); white-space: nowrap; }
 .avatar { border: 0; cursor: pointer; }
 .user-dropdown {
   position: absolute; right: 0; top: calc(100% + 10px); z-index: 30;

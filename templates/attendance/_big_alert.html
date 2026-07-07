@@ -9,22 +9,22 @@
   {% if just_marked.message %}
     <p style="margin:12px auto 0;max-width:460px;font-size:1.15rem;color:#555;line-height:1.45">{{ just_marked.message }}</p>
   {% else %}
-    <div style="display:flex;gap:14px;justify-content:center;flex-wrap:wrap;margin-top:14px">
-      <div style="background:#f4f5fb;border-radius:12px;padding:10px 18px;min-width:170px">
-        <div style="font-size:11px;letter-spacing:1px;text-transform:uppercase;color:#8b8fa6;font-weight:800">Plan</div>
-        <div style="font-size:16px;color:#333;font-weight:700;margin-top:3px">{{ just_marked.plan|default:"Sin plan" }}</div>
-      </div>
-      <div style="background:#f4f5fb;border-radius:12px;padding:10px 18px;min-width:170px">
-        <div style="font-size:11px;letter-spacing:1px;text-transform:uppercase;color:#8b8fa6;font-weight:800">Instructor</div>
-        <div style="font-size:16px;color:#333;font-weight:700;margin-top:3px">{{ just_marked.trainer|default:"—" }}</div>
-      </div>
-      {% if just_marked.plan_start or just_marked.plan_end %}
-      <div style="background:#f4f5fb;border-radius:12px;padding:10px 18px;min-width:170px">
-        <div style="font-size:11px;letter-spacing:1px;text-transform:uppercase;color:#8b8fa6;font-weight:800">Inicio / Vence</div>
-        <div style="font-size:16px;color:#333;font-weight:700;margin-top:3px">{{ just_marked.plan_start|default:"—" }} – {{ just_marked.plan_end|default:"—" }}</div>
-        {% if just_marked.plan_days_label %}<div style="font-size:12.5px;color:#8b8fa6;margin-top:2px">{{ just_marked.plan_days_label }}</div>{% endif %}
-      </div>
-      {% endif %}
+    <div style="display:flex;flex-direction:column;gap:10px;margin-top:14px;max-width:480px;margin-left:auto;margin-right:auto">
+      {% for p in just_marked.plans %}
+        <div style="background:#f4f5fb;border-radius:12px;padding:12px 18px;text-align:left">
+          <div style="font-size:11px;letter-spacing:1px;text-transform:uppercase;color:#8b8fa6;font-weight:800">{{ p.label }}</div>
+          <div style="font-size:16px;color:#333;font-weight:700;margin-top:3px">{{ p.start|default:"—" }} → {{ p.end|default:"—" }}</div>
+          <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-top:6px">
+            {% if p.days_label %}<span class="badge {{ p.days_class }}">{{ p.days_label }}</span>{% endif %}
+            {% if p.trainer %}<span style="font-size:13px;color:#555">Entrenador: {{ p.trainer }}</span>{% endif %}
+          </div>
+        </div>
+      {% empty %}
+        <div style="background:#f4f5fb;border-radius:12px;padding:10px 18px">
+          <div style="font-size:11px;letter-spacing:1px;text-transform:uppercase;color:#8b8fa6;font-weight:800">Plan</div>
+          <div style="font-size:16px;color:#333;font-weight:700;margin-top:3px">Sin plan</div>
+        </div>
+      {% endfor %}
     </div>
   {% endif %}
 </div>

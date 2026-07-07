@@ -37,6 +37,7 @@
     <div><span>Tipo</span><b>{{ freeze.get_kind_display }}{% if freeze.days %} ({{ freeze.days }} días){% endif %}</b></div>
     <div><span>Desde</span><b>{{ freeze.start_date }}</b></div>
     <div><span>Hasta</span><b>{{ freeze.end_date|default:"Indefinido" }}</b></div>
+    <div><span>Días restantes de congelación</span><b>{{ client.freeze_days_remaining|default:"—" }}</b></div>
   </div>
 </div>
 {% endif %}
