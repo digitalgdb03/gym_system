@@ -25,21 +25,29 @@ def _list_context(request):
         records = records.filter(
             Q(client__full_name__icontains=q) | Q(client__id_card__icontains=q_id)
         )
+    inside = records.filter(check_out__isnull=True).count()
+    total = records.count()
+    distinct = records.values("client").distinct().count()
+
+    highlight_id = request.session.pop("highlight_client", None)
+    if highlight_id:
+        # El cliente que acaba de intentar marcar entrada (y ya estaba
+        # adentro) se muestra de primero en la lista de hoy.
+        records = sorted(records, key=lambda r: r.client_id != highlight_id)
     page = paginate(request, records)
     return {
         "records": page,
         "page_obj": page,
-        "inside": records.filter(check_out__isnull=True).count(),
-        "total": records.count(),
-        "distinct": records.values("client").distinct().count(),
+        "inside": inside,
+        "total": total,
+        "distinct": distinct,
         "doc_types": ["V", "E", "J", "P"],
     }
 
 
-def _mark_attendance(client, user):
-    """Registra la entrada de hoy y arma la tarjeta de estatus + todos los
-    planes del cliente (inicio, fin, días y entrenador de cada uno)."""
-    Attendance.objects.create(client=client, created_by=user)
+def _client_plans_snapshot(client):
+    """Arma la lista de planes del cliente (inicio, fin, días y entrenador
+    de cada uno) para la tarjeta de estatus al marcar asistencia."""
     plans = []
     for m in client.memberships.select_related("plan", "trainer").all():
         badge = m.days_badge
@@ -51,10 +59,17 @@ def _mark_attendance(client, user):
             "days_class": badge[1] if badge else "",
             "trainer": m.trainer.full_name if m.trainer else "",
         })
+    return plans
+
+
+def _mark_attendance(client, user):
+    """Registra la entrada de hoy y arma la tarjeta de estatus + todos los
+    planes del cliente (inicio, fin, días y entrenador de cada uno)."""
+    Attendance.objects.create(client=client, created_by=user)
     return {
         "name": client.full_name, "id_card": client.full_id,
         "status": client.status, "status_display": client.get_status_display(),
-        "plans": plans,
+        "plans": _client_plans_snapshot(client),
     }
 
 
@@ -106,7 +121,10 @@ def mark_entry(request):
                 "status": "ERROR", "status_display": "En el gimnasio",
                 "message": "Esta persona ya marcó entrada hoy y no ha registrado su salida. "
                            "Registra primero su salida para volver a marcar.",
+                "already_inside": True,
+                "plans": _client_plans_snapshot(client),
             }
+            request.session["highlight_client"] = client.pk
             return redirect("attendance:list")
 
         # Entradas abiertas de días ANTERIORES (olvidaron marcar salida):

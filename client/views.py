@@ -62,6 +62,7 @@ def _change_plan_ctx(membership, form, frm):
         "change_plan_from": frm,
         "change_plan_close_url": _back_url(frm, membership.client),
         "plan_trainer_map_json": plan_trainer_map_json(),
+        "plan_prices_json": plan_prices_json(),
     }
 
 
@@ -323,9 +324,10 @@ def membership_add(request, pk):
 @login_required
 @full_access_required
 def membership_change_plan(request, pk):
-    """Cambia el plan de una membresía existente por otro: no genera un
-    pago nuevo, solo ajusta el plan, el monto (según el nuevo plan) y el
-    vencimiento (recalculado desde la misma fecha de inicio)."""
+    """Ajusta una membresía existente: cambiarla a otro plan y/o editar
+    sus fechas de inicio y vencimiento. No genera un pago nuevo: el monto
+    se recalcula según el plan y el vencimiento se recalcula desde el
+    inicio salvo que el usuario indique uno explícito."""
     membership = get_object_or_404(Membership, pk=pk)
     client = membership.client
     frm = request.POST.get("from") or request.GET.get("from") or "detail"
@@ -342,8 +344,9 @@ def membership_change_plan(request, pk):
         membership.trainer = form.cleaned_data.get("trainer") if plan.requires_trainer else None
         if not membership.is_custom:
             membership.amount = plan.price(membership.currency)
-        membership.end_date = membership.compute_end_date()
-        update_fields = ["plan", "trainer", "amount", "end_date"]
+        membership.start_date = form.cleaned_data.get("start_date") or membership.start_date
+        membership.end_date = form.cleaned_data.get("end_date") or membership.compute_end_date()
+        update_fields = ["plan", "trainer", "amount", "start_date", "end_date"]
         if membership.is_custom:
             update_fields.append("days")
         membership.save(update_fields=update_fields)

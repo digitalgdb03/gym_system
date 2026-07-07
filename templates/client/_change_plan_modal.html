@@ -13,11 +13,11 @@
             {% if field.help_text %}<div class="field-hint">{{ field.help_text }}</div>{% endif %}
             {% for e in field.errors %}<div class="msg error">{{ e }}</div>{% endfor %}</div>
         {% endfor %}
-        <div class="section-note">El monto y el vencimiento se recalculan según el nuevo plan; los demás planes del cliente no se ven afectados.</div>
+        <div class="section-note">Puedes cambiar el plan, ajustar sus fechas, o ambas cosas. Si cambias el plan y no tocas el vencimiento, se recalcula según la duración del plan elegido a partir del inicio.</div>
       </div>
       <div class="modal-actions">
         <a class="btn btn-ghost" href="{{ change_plan_close_url }}">Cancelar</a>
-        <button class="btn btn-primary">Cambiar plan</button>
+        <button class="btn btn-primary">Guardar</button>
       </div>
     </form>
   </div>
@@ -25,17 +25,68 @@
 <script>
   (function () {
     var trainerNeeded = {{ plan_trainer_map_json|default:"{}"|safe }};
+    var planPrices = {{ plan_prices_json|default:"{}"|safe }};
     var form = document.getElementById("changePlanForm");
     if (!form) return;
     var planSelect = form.querySelector('[name="plan"]');
     var trainerField = form.querySelector('[data-field="trainer"]');
+    var startField = form.querySelector('[data-field="start_date"]');
+    var endField = form.querySelector('[data-field="end_date"]');
+    var startInput = startField ? startField.querySelector("input") : null;
+    var endInput = endField ? endField.querySelector("input") : null;
 
     function syncTrainer() {
       if (!planSelect || !trainerField) return;
       trainerField.style.display = trainerNeeded[planSelect.value] ? "" : "none";
     }
 
-    if (planSelect) planSelect.addEventListener("change", syncTrainer);
+    function toISO(d) { return d.toISOString().slice(0, 10); }
+
+    function addDays(dateStr, days) {
+      var d = new Date(dateStr + "T00:00:00");
+      d.setDate(d.getDate() + days);
+      return toISO(d);
+    }
+
+    function addMonthsClamped(dateStr, months) {
+      var d = new Date(dateStr + "T00:00:00");
+      var day = d.getDate();
+      d.setDate(1);
+      d.setMonth(d.getMonth() + months);
+      var dim = new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate();
+      d.setDate(Math.min(day, dim));
+      return toISO(d);
+    }
+
+    // Al cambiar de plan se sugiere un nuevo vencimiento según la duración
+    // del plan elegido, a partir del inicio actual (no se toca si el
+    // usuario prefiere editarlo a mano después).
+    function suggestedEnd(startStr, planId) {
+      var info = planPrices[planId];
+      if (!info || !startStr) return startStr;
+      if (info.duration === "DAILY") return addDays(startStr, 1);
+      if (info.duration === "WEEKLY") return addDays(startStr, 7);
+      return addMonthsClamped(startStr, 1);
+    }
+
+    function syncDates() {
+      if (!startInput || !endInput || !planSelect || !planSelect.value) return;
+      endInput.value = suggestedEnd(startInput.value, planSelect.value);
+    }
+
+    // Si el inicio o el vencimiento se editan a mano y quedan invertidos,
+    // se avisa y se limpia el campo recién tocado.
+    function checkDateOrder(input, other) {
+      if (!input.value || !other.value) return;
+      if (startInput.value >= endInput.value) {
+        alert("El vencimiento debe ser posterior al inicio.");
+        input.value = "";
+      }
+    }
+    if (startInput) startInput.addEventListener("change", function () { checkDateOrder(startInput, endInput); });
+    if (endInput) endInput.addEventListener("change", function () { checkDateOrder(endInput, startInput); });
+
+    if (planSelect) planSelect.addEventListener("change", function () { syncTrainer(); syncDates(); });
     syncTrainer();
   })();
 </script>

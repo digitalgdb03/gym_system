@@ -68,26 +68,38 @@ class AddPlanForm(InitialPaymentForm):
 
 
 class ChangePlanForm(PlaceholderChoiceMixin, forms.Form):
-    """Cambia el plan de una membresía existente por otro que el cliente
-    no tenga ya asignado. No es un pago nuevo: el monto y el vencimiento
-    se recalculan según el plan elegido, sin tocar los demás planes del
-    cliente."""
-    plan = forms.ModelChoiceField(queryset=Plan.objects.all(), label="Nuevo plan")
+    """Ajusta una membresía existente: cambiarla a otro plan que el
+    cliente no tenga ya asignado, y/o editar directamente sus fechas de
+    inicio y vencimiento. No es un pago nuevo: si no se indica una fecha
+    de vencimiento, se recalcula según el plan elegido; si el plan no
+    cambia, no se toca nada más que lo que el usuario edite."""
+    plan = forms.ModelChoiceField(queryset=Plan.objects.all(), label="Plan")
     trainer = forms.ModelChoiceField(queryset=User.objects.filter(roles__contains=["INSTRUCTOR"]),
                                       required=False, label="Entrenador")
+    start_date = forms.DateField(label="Inicio", required=False,
+                                 widget=forms.DateInput(attrs={"type": "date"}))
+    end_date = forms.DateField(label="Vencimiento", required=False,
+                               widget=forms.DateInput(attrs={"type": "date"}))
 
     def __init__(self, *args, membership=None, **kwargs):
         self.membership = membership
         super().__init__(*args, **kwargs)
         if membership is not None:
-            existing = membership.client.memberships.values_list("plan_id", flat=True)
-            self.fields["plan"].queryset = self.fields["plan"].queryset.exclude(pk__in=existing)
+            other_plans = membership.client.memberships.exclude(pk=membership.pk).values_list("plan_id", flat=True)
+            self.fields["plan"].queryset = self.fields["plan"].queryset.exclude(pk__in=other_plans)
+            self.fields["plan"].initial = membership.plan_id
+            self.fields["trainer"].initial = membership.trainer_id
+            self.fields["start_date"].initial = membership.start_date
+            self.fields["end_date"].initial = membership.end_date
 
     def clean(self):
         cleaned = super().clean()
         plan = cleaned.get("plan")
         if plan and plan.requires_trainer and not cleaned.get("trainer"):
             self.add_error("trainer", "Asigna un entrenador (Boxeo/MMA).")
+        start_date, end_date = cleaned.get("start_date"), cleaned.get("end_date")
+        if start_date and end_date and end_date <= start_date:
+            self.add_error("end_date", "El vencimiento debe ser posterior al inicio.")
         return cleaned
 
 

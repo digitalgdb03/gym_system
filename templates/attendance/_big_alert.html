@@ -8,7 +8,8 @@
   </div>
   {% if just_marked.message %}
     <p style="margin:12px auto 0;max-width:460px;font-size:1.15rem;color:#555;line-height:1.45">{{ just_marked.message }}</p>
-  {% else %}
+  {% endif %}
+  {% if not just_marked.message or just_marked.already_inside %}
     <div style="display:flex;flex-direction:column;gap:10px;margin-top:14px;max-width:480px;margin-left:auto;margin-right:auto">
       {% for p in just_marked.plans %}
         <div style="background:#f4f5fb;border-radius:12px;padding:12px 18px;text-align:left">
