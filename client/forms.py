@@ -1,14 +1,16 @@
 from django import forms
-from configuration.form_mixins import PlaceholderChoiceMixin
+from configuration.form_mixins import AmountFieldsValidationMixin, PersonFieldsValidationMixin, PlaceholderChoiceMixin
 from payments.forms import PaymentForm
 from plans.models import Plan
 from user.models import User
 from .models import Client, Membership, Freeze
 
 
-class ClientForm(PlaceholderChoiceMixin, forms.ModelForm):
+class ClientForm(PersonFieldsValidationMixin, PlaceholderChoiceMixin, forms.ModelForm):
     """Al registrar un cliente nuevo no se pide el estado: siempre
     queda Activo por defecto. Al editar sí se puede ajustar."""
+    phone_fields = ("phone", "emergency_contact")
+
     class Meta:
         model = Client
         fields = ["full_name", "doc_type", "id_card", "email", "phone", "status", "health", "emergency_contact"]
@@ -17,18 +19,13 @@ class ClientForm(PlaceholderChoiceMixin, forms.ModelForm):
         super().__init__(*args, **kwargs)
         if self.instance.pk is None:
             del self.fields["status"]
-        else:
-            self.fields["id_card"].disabled = True
-            self.fields["doc_type"].disabled = True
-            self.fields["status"].disabled = True
-
-    def clean_id_card(self):
-        return (self.cleaned_data.get("id_card") or "").replace(".", "").replace("-", "").strip()
 
 
-class MembershipForm(PlaceholderChoiceMixin, forms.ModelForm):
+class MembershipForm(AmountFieldsValidationMixin, PlaceholderChoiceMixin, forms.ModelForm):
     """La fecha de inicio es siempre hoy y el vencimiento se calcula
     automáticamente según el plan; por eso no se piden en el formulario."""
+    amount_fields = ["amount"]
+
     class Meta:
         model = Membership
         fields = ["plan", "is_custom", "amount", "currency", "trainer"]

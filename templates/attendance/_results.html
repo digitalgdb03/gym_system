@@ -25,11 +25,10 @@
       <td data-label="Ubicación">{% if a.is_inside %}<span class="badge activo">En el gimnasio</span>{% else %}<span class="badge congelado">Se retiró</span>{% endif %}</td>
       <td data-label="">
         <div class="row-actions">
+          <a class="icon-btn" href="{% url 'attendance:list' %}?action=view_client&client={{ a.client.pk }}" title="Ver información del cliente"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/></svg></a>
           {% if a.is_inside %}
             <form method="post" action="{% url 'attendance:checkout' a.pk %}" style="display:inline">{% csrf_token %}
               <button class="btn btn-ghost" style="padding:6px 12px">Salida</button></form>
-          {% else %}
-            <span style="color:var(--muted)">—</span>
           {% endif %}
         </div>
       </td>

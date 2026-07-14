@@ -148,6 +148,7 @@ body {
 .badge.congelado { background: rgba(61,107,214,.12); color: var(--info); }
 .badge.moroso { background: rgba(214,59,59,.12); color: var(--err); }
 .badge.inactivo { background: rgba(138,143,158,.16); color: var(--muted); }
+.badge.diario { background: rgba(61,107,214,.12); color: var(--info); }
 
 /* Tables */
 .table-wrap { overflow-x: auto; }
@@ -228,6 +229,8 @@ tbody tr:hover { background: #fafbfd; }
 .pg-btn:hover { background: var(--bg); }
 .pg-btn.disabled { color: var(--muted); pointer-events: none; opacity: .5; }
 .pg-info { font-size: 13px; color: var(--muted); font-weight: 600; }
+.pg-size { display: flex; align-items: center; gap: 7px; font-size: 13px; color: var(--muted); font-weight: 600; }
+.pg-size select { padding: 6px 10px; border: 1px solid var(--line); border-radius: 8px; background: #fff; color: var(--azul); font-size: 13px; font-weight: 600; }
 .klass { border-radius: 7px; padding: 6px 8px; color: #fff; font-size: 11.5px; line-height: 1.25; }
 .klass b { display: block; font-weight: 700; font-size: 12px; }
 .klass span { opacity: .9; font-size: 10.5px; }
@@ -293,6 +296,7 @@ tbody tr:hover { background: #fafbfd; }
   display: grid; place-items: center; z-index: 50; padding: 20px; animation: fade .2s ease; }
 .modal { position: relative; width: 100%; max-width: 470px; background: #fff; border-radius: 16px; padding: 26px;
   box-shadow: var(--shadow-lg); max-height: 92vh; overflow: auto; }
+.modal-wide { max-width: 760px; }
 .modal-title { font-family: var(--display); font-size: 27px; letter-spacing: .5px; color: var(--azul); margin-bottom: 18px; padding-right: 30px; }
 .modal-close { position: absolute; top: 18px; right: 18px; width: 30px; height: 30px; border-radius: 50%;
   border: 0; background: var(--bg); color: var(--gris); font-size: 20px; line-height: 1; cursor: pointer;
@@ -596,6 +600,7 @@ tbody tr:hover { background: #fafbfd; }
 .mon-tag { font-size: 10.5px; font-weight: 700; padding: 2px 7px; border-radius: 999px; letter-spacing: .3px; }
 .mon-tag.bcv { background: rgba(52,57,89,.1); color: var(--azul); }
 .mon-tag.div { background: rgba(31,157,87,.14); color: var(--ok); }
+.mon-tag.custom { background: rgba(242,185,12,.18); color: var(--naranja); margin-left: 4px; }
 
 /* Campos: checkbox, estático, ayuda */
 .field-check .check { display: flex; align-items: center; gap: 10px; cursor: pointer; font-size: 14px; font-weight: 600; color: var(--gris); }

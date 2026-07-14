@@ -5,10 +5,11 @@ from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.db.models import Q
 from django.shortcuts import get_object_or_404, redirect, render
+from django.urls import reverse_lazy
 from django.utils import timezone
 
 from client.forms import ClientForm, InitialPaymentForm
-from client.models import Client
+from client.models import Client, detail_context
 from client.views import register_client_with_payment
 from configuration.utils import is_ajax, paginate, plan_prices_json, plan_trainer_map_json, client_plan_end_dates_json
 from .models import Attendance, normalize_id
@@ -80,6 +81,9 @@ def attendance_list(request):
         return render(request, "attendance/_results.html", ctx)
     ctx["just_marked"] = request.session.pop("just_marked", None)
     ctx["client_not_found"] = request.session.pop("client_not_found", None)
+    if request.GET.get("action") == "view_client" and request.GET.get("client"):
+        target = get_object_or_404(Client, pk=request.GET["client"])
+        ctx["view_client_ctx"] = detail_context(target, close_url=reverse_lazy("attendance:list"))
     return render(request, "attendance/list.html", ctx)
 
 

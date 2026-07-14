@@ -1,9 +1,21 @@
-{% if page_obj and page_obj.paginator.num_pages > 1 %}
+{% if page_obj and page_obj.paginator.count > 0 %}
 <div class="pagination">
-  <a class="pg-btn {% if not page_obj.has_previous %}disabled{% endif %}"
-     href="{% if page_obj.has_previous %}?{% querystring page=page_obj.previous_page_number %}{% else %}#{% endif %}">‹ Anterior</a>
-  <span class="pg-info">Página {{ page_obj.number }} de {{ page_obj.paginator.num_pages }}</span>
-  <a class="pg-btn {% if not page_obj.has_next %}disabled{% endif %}"
-     href="{% if page_obj.has_next %}?{% querystring page=page_obj.next_page_number %}{% else %}#{% endif %}">Siguiente ›</a>
+  {% if page_obj.paginator.num_pages > 1 %}
+    <a class="pg-btn {% if not page_obj.has_previous %}disabled{% endif %}"
+       href="{% if page_obj.has_previous %}{% querystring page=page_obj.previous_page_number %}{% else %}#{% endif %}">‹ Anterior</a>
+    <span class="pg-info">Página {{ page_obj.number }} de {{ page_obj.paginator.num_pages }}</span>
+    <a class="pg-btn {% if not page_obj.has_next %}disabled{% endif %}"
+       href="{% if page_obj.has_next %}{% querystring page=page_obj.next_page_number %}{% else %}#{% endif %}">Siguiente ›</a>
+  {% endif %}
+  <label class="pg-size">
+    Mostrar
+    <select onchange="location.href=this.value">
+      <option value="{% querystring per_page=10 page=None %}" {% if not request.GET.per_page or request.GET.per_page == "10" %}selected{% endif %}>10</option>
+      <option value="{% querystring per_page=25 page=None %}" {% if request.GET.per_page == "25" %}selected{% endif %}>25</option>
+      <option value="{% querystring per_page=50 page=None %}" {% if request.GET.per_page == "50" %}selected{% endif %}>50</option>
+      <option value="{% querystring per_page=100 page=None %}" {% if request.GET.per_page == "100" %}selected{% endif %}>100</option>
+      <option value="{% querystring per_page='all' page=None %}" {% if request.GET.per_page == "all" %}selected{% endif %}>Todos</option>
+    </select>
+  </label>
 </div>
 {% endif %}

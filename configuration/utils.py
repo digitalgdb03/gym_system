@@ -2,9 +2,33 @@ import json
 
 from django.core.paginator import Paginator
 
+PER_PAGE_CHOICES = [10, 25, 50, 100]
+
 
 def paginate(request, queryset, per_page=10):
+    """Pagina 'queryset'. El tamaño de página se puede sobrescribir con
+    ?per_page=10|25|50|100, o ?per_page=all para verlos todos en una sola
+    página (usado por el selector de la barra de paginación)."""
+    raw = request.GET.get("per_page")
+    if raw == "all":
+        count = queryset.count() if hasattr(queryset, "count") else len(queryset)
+        per_page = max(count, 1)
+    elif raw and raw.isdigit() and int(raw) in PER_PAGE_CHOICES:
+        per_page = int(raw)
     return Paginator(queryset, per_page).get_page(request.GET.get("page"))
+
+
+class PerPageMixin:
+    """Para ListView: permite sobrescribir paginate_by con ?per_page=
+    10|25|50|100|all, mismo criterio que paginate() para el selector de la
+    barra de paginación."""
+    def get_paginate_by(self, queryset):
+        raw = self.request.GET.get("per_page")
+        if raw == "all":
+            return max(queryset.count(), 1)
+        if raw and raw.isdigit() and int(raw) in PER_PAGE_CHOICES:
+            return int(raw)
+        return self.paginate_by
 
 
 def is_ajax(request):

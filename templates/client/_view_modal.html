@@ -1,0 +1,82 @@
+{% load gym_extras %}
+<div class="modal-overlay" data-close="{{ view_client_ctx.close_url }}">
+  <div class="modal modal-wide" role="dialog">
+    <h3 class="modal-title">{{ view_client_ctx.client.full_name }}</h3>
+
+    <div class="profile-head card" style="margin:0 0 18px">
+      <div class="av-lg">{{ view_client_ctx.client.initials }}</div>
+      <div>
+        <div class="profile-meta"><span class="badge {{ view_client_ctx.client.status_badge_class }}">{{ view_client_ctx.client.get_status_display }}</span> · {{ view_client_ctx.client.full_id }}</div>
+        {% if view_client_ctx.client.phone %}<div class="section-note" style="margin:4px 0 0">Tel: {{ view_client_ctx.client.phone }}</div>{% endif %}
+        {% if view_client_ctx.client.status == 'INACTIVE' and view_client_ctx.client.deactivated_at %}<div class="section-note" style="margin:4px 0 0">Inactivo desde {{ view_client_ctx.client.deactivated_at|date:"d/m/Y g:i A" }}</div>{% endif %}
+      </div>
+    </div>
+
+    {% if view_client_ctx.freeze %}
+    <div class="card freeze-banner" style="margin-bottom:18px"><h3>Membresía congelada</h3>
+      <div class="freeze-grid">
+        <div><span>Motivo</span><b>{{ view_client_ctx.freeze.reason }}</b></div>
+        <div><span>Tipo</span><b>{{ view_client_ctx.freeze.get_kind_display }}{% if view_client_ctx.freeze.days %} ({{ view_client_ctx.freeze.days }} días){% endif %}</b></div>
+        <div><span>Desde</span><b>{{ view_client_ctx.freeze.start_date }}</b></div>
+        <div><span>Hasta</span><b>{{ view_client_ctx.freeze.end_date|default:"Indefinido" }}</b></div>
+      </div>
+    </div>
+    {% endif %}
+
+    {% if view_client_ctx.client.status == 'OVERDUE' and view_client_ctx.pending_memberships %}
+    <div class="card overdue-banner" style="margin-bottom:18px"><h3>Pagos pendientes</h3>
+      <div class="table-wrap"><table>
+        <thead><tr><th>Servicio</th><th>Venció</th><th>Monto a pagar</th></tr></thead>
+        <tbody>
+        {% for m in view_client_ctx.pending_memberships %}
+          <tr>
+            <td><span class="serv-color" style="background:{{ m.plan.service.color }}"></span>{{ m.plan.label }}</td>
+            <td>{{ m.end_date }}</td>
+            <td><span class="usd">${{ m.renewal_amount }}</span><div class="bs">Bs {{ m.renewal_amount|bs }}</div></td>
+          </tr>
+        {% endfor %}
+        </tbody>
+      </table></div>
+    </div>
+    {% endif %}
+
+    <div class="card" style="margin-bottom:18px"><h3>Planes / servicios</h3>
+      <div class="table-wrap"><table>
+        <thead><tr><th>Servicio</th><th>Plan</th><th>Inicio</th><th>Vence</th><th>Entrenador</th></tr></thead>
+        <tbody>
+        {% for m in view_client_ctx.memberships %}
+          <tr>
+            <td><span class="serv-color" style="background:{{ m.plan.service.color }}"></span>{{ m.plan.label }}</td>
+            <td>{{ m.plan.get_duration_display }}{% if m.is_custom %} · pers.{% endif %}</td>
+            <td>{{ m.start_date }}</td><td>{{ m.end_date|default:"—" }}</td>
+            <td>{{ m.trainer.full_name|default:"—" }}</td>
+          </tr>
+        {% empty %}<tr><td colspan="5">Sin planes.</td></tr>{% endfor %}
+        </tbody>
+      </table></div>
+    </div>
+
+    <div class="card" style="margin-bottom:4px"><h3>Historial de pagos</h3>
+      <div class="table-wrap"><table>
+        <thead><tr><th>Plan</th><th>Monto</th><th>Método</th><th>Fecha de pago</th><th>Inicio del plan</th><th>Vence</th></tr></thead>
+        <tbody>
+        {% for p in view_client_ctx.payments %}
+          <tr>
+            <td>{{ p.plan.label }}</td>
+            <td><span class="usd">${{ p.amount_usd }}</span></td>
+            <td>{{ p.get_method_display }}</td>
+            <td>{{ p.created_at|date:"d/m/Y" }}</td>
+            <td>{{ p.start_date|date:"d/m/Y"|default:"—" }}</td>
+            <td>{{ p.end_date|date:"d/m/Y"|default:"—" }}</td>
+          </tr>
+        {% empty %}<tr><td colspan="6">Sin pagos.</td></tr>{% endfor %}
+        </tbody>
+      </table></div>
+    </div>
+
+    <div class="modal-actions">
+      <a class="btn btn-ghost" href="{% url 'client:detail' view_client_ctx.client.pk %}">Ver perfil completo</a>
+      <a class="btn btn-primary" href="{{ view_client_ctx.close_url }}">Cerrar</a>
+    </div>
+  </div>
+</div>

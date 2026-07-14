@@ -1,9 +1,11 @@
 from django import forms
-from configuration.form_mixins import PlaceholderChoiceMixin
+from configuration.form_mixins import AmountFieldsValidationMixin, PlaceholderChoiceMixin
 from .models import Plan
 
 
-class PlanForm(PlaceholderChoiceMixin, forms.ModelForm):
+class PlanForm(AmountFieldsValidationMixin, PlaceholderChoiceMixin, forms.ModelForm):
+    amount_fields = ["price_bcv", "price_cash"]
+
     class Meta:
         model = Plan
         fields = ["service", "name", "duration", "price_bcv", "price_cash",

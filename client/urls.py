@@ -14,4 +14,5 @@ urlpatterns = [
     path("membresia/<int:pk>/cambiar-plan/", views.membership_change_plan, name="membership_change_plan"),
     path("<int:pk>/congelar/", views.client_freeze, name="freeze"),
     path("<int:pk>/descongelar/", views.client_unfreeze, name="unfreeze"),
+    path("<int:pk>/activar/", views.client_activate, name="activate"),
 ]

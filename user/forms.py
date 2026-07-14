@@ -1,8 +1,9 @@
 from django import forms
+from configuration.form_mixins import PersonFieldsValidationMixin
 from .models import User
 
 
-class StaffForm(forms.ModelForm):
+class StaffForm(PersonFieldsValidationMixin, forms.ModelForm):
     roles = forms.MultipleChoiceField(
         choices=User.Role.choices, widget=forms.CheckboxSelectMultiple,
         required=True, label="Roles")
@@ -29,12 +30,6 @@ class StaffForm(forms.ModelForm):
         else:
             self.fields["password1"].help_text = "Déjalo vacío para no cambiar la contraseña actual."
             self.fields["roles"].initial = self.instance.roles
-            if not self.instance.is_instructor:
-                self.fields["id_card"].disabled = True
-                self.fields["doc_type"].disabled = True
-
-    def clean_id_card(self):
-        return (self.cleaned_data.get("id_card") or "").replace(".", "").replace("-", "").strip()
 
     def clean(self):
         cleaned = super().clean()
@@ -59,7 +54,7 @@ class StaffForm(forms.ModelForm):
         return cleaned
 
 
-class ProfileForm(forms.ModelForm):
+class ProfileForm(PersonFieldsValidationMixin, forms.ModelForm):
     """Formulario reducido para que cada usuario edite su propio perfil
     (sin poder tocar su rol, cédula o disciplinas)."""
     password1 = forms.CharField(

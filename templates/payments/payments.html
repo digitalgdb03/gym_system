@@ -137,6 +137,7 @@
     var bsInput = bsField ? bsField.querySelector("input") : null;
     var planSelect = form.querySelector('[name="plan"]');
     var customCheck = form.querySelector('[name="is_custom"]');
+    var customField = form.querySelector('[data-field="is_custom"]');
 
     var clientSearch = document.getElementById("clientSearchInput");
     var clientIdField = document.getElementById("clientIdField");
@@ -174,6 +175,21 @@
       var isUsd = method && isCashMethod(method.value);
       if (usdField) usdField.style.display = isUsd ? "" : "none";
       if (bsField) bsField.style.display = isUsd ? "none" : "";
+    }
+
+    // Los planes diarios son un pase de un día a precio fijo: no admiten
+    // pago personalizado (no hay "días" que prorratear) ni fechas editadas
+    // a mano (siempre inicia y vence el mismo día).
+    function syncCustom() {
+      if (!planSelect) return;
+      var info = planPrices[planSelect.value];
+      var isDaily = info && info.duration === "DAILY";
+      if (customField) customField.style.display = isDaily ? "none" : "";
+      if (isDaily && customCheck && customCheck.checked) {
+        customCheck.checked = false;
+      }
+      if (startInput) startInput.readOnly = isDaily;
+      if (endInput) endInput.readOnly = isDaily;
     }
 
     function toISO(d) { return d.toISOString().slice(0, 10); }
@@ -230,14 +246,21 @@
           price = info ? parseFloat(info.bcv) : NaN;
         }
         if (!isNaN(amount) && price) {
-          var perDay = price / daysInMonthOf(startStr);
+          if (info.duration !== "DAILY") {
+            var periods = Math.round(amount / price);
+            if (periods >= 1 && Math.abs(amount - periods * price) <= 0.01) {
+              return info.duration === "WEEKLY" ? addDays(startStr, 7 * periods) : addMonthsClamped(startStr, periods);
+            }
+          }
+          var unitDays = info.duration === "DAILY" ? 1 : info.duration === "WEEKLY" ? 7 : daysInMonthOf(startStr);
+          var perDay = price / unitDays;
           var days = perDay ? Math.floor(amount / perDay) : 0;
           return addDays(startStr, days);
         }
         return startStr;
       }
       if (!info) return startStr;
-      if (info.duration === "DAILY") return addDays(startStr, 1);
+      if (info.duration === "DAILY") return startStr;
       if (info.duration === "WEEKLY") return addDays(startStr, 7);
       return addMonthsClamped(startStr, 1);
     }
@@ -257,6 +280,12 @@
       if (!clientDaysInfo) return;
       var clientId = clientIdField.value;
       var planId = planSelect ? planSelect.value : "";
+      var info = planPrices[planId];
+      if (info && info.duration === "DAILY") {
+        clientDaysInfo.innerHTML = '<span class="badge diario">Sesión diaria</span>';
+        clientDaysInfo.style.display = "";
+        return;
+      }
       var ends = (clientId && clientPlanEndDates[clientId]) || {};
       var endStr = ends[planId];
       if (!clientId || !planId || !endStr) {
@@ -423,7 +452,7 @@
     }
 
     if (method) method.addEventListener("change", function () { syncMethodFields(); syncAmount(); syncDates(); });
-    if (planSelect) planSelect.addEventListener("change", function () { syncAmount(); syncDates(); updateClientDaysInfo(); });
+    if (planSelect) planSelect.addEventListener("change", function () { syncCustom(); syncAmount(); syncDates(); updateClientDaysInfo(); });
     if (customCheck) customCheck.addEventListener("change", function () { syncAmount(); syncDates(); });
     if (usdInput) usdInput.addEventListener("input", syncDates);
     if (bsInput) bsInput.addEventListener("input", syncDates);
@@ -448,6 +477,7 @@
     if (endInput) endInput.addEventListener("change", function () { checkDateOrder(endInput, startInput); });
 
     syncPlanOptions();
+    syncCustom();
     syncMethodFields();
     syncAmount();
     syncDates();
@@ -455,4 +485,6 @@
   })();
 </script>
 {% endif %}
+
+{% if view_client_ctx %}{% include "client/_view_modal.html" %}{% endif %}
 {% endblock %}

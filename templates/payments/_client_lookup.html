@@ -5,6 +5,11 @@
       <b>{{ c.full_name }}</b><span>{{ c.full_id }}</span>
     </button>
   {% endfor %}
+{% elif inactive_client %}
+  <button type="button" class="client-option client-option-blocked" disabled>
+    <b>{{ inactive_client.full_name }} ({{ inactive_client.full_id }})</b>
+    <span>Este cliente está inactivo. Actívalo desde su perfil antes de registrar un pago.</span>
+  </button>
 {% elif q %}
   <button type="button" class="client-option client-option-new" data-new="1">
     <b>+ Registrar «{{ q }}» como cliente nuevo</b><span>No se encontró ningún cliente con ese nombre o cédula</span>

@@ -313,6 +313,36 @@
         }, 4500 + i * 250);
       });
     })();
+
+    // Campos marcados por los mixins de validacion de formularios
+    // (data-only-letters / data-only-digits / data-only-amount):
+    // se filtra el caracter invalido apenas se escribe o se pega, no solo
+    // al intentar guardar. Delegado en document para que tambien aplique a
+    // formularios que aparezcan despues de la carga inicial (modales).
+    (function () {
+      var LETTERS_RE = /[^A-Za-zÀ-ÖØ-öø-ÿ\s'.-]/g;
+      var DIGITS_RE = /[^0-9]/g;
+
+      function filterAmount(value) {
+        value = value.replace(/[^0-9.]/g, "");
+        var dot = value.indexOf(".");
+        if (dot !== -1) value = value.slice(0, dot + 1) + value.slice(dot + 1).replace(/\./g, "");
+        return value;
+      }
+
+      document.addEventListener("input", function (e) {
+        var el = e.target;
+        if (!el.matches || !el.matches("input")) return;
+        var filtered = null;
+        if (el.hasAttribute("data-only-amount")) filtered = filterAmount(el.value);
+        else if (el.hasAttribute("data-only-letters")) filtered = el.value.replace(LETTERS_RE, "");
+        else if (el.hasAttribute("data-only-digits")) filtered = el.value.replace(DIGITS_RE, "");
+        if (filtered === null || filtered === el.value) return;
+        var pos = el.selectionStart - (el.value.length - filtered.length);
+        el.value = filtered;
+        if (typeof pos === "number" && pos >= 0) el.setSelectionRange(pos, pos);
+      });
+    })();
   </script>
 </body>
 </html>

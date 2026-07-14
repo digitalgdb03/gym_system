@@ -64,7 +64,7 @@
     function suggestedEnd(startStr, planId) {
       var info = planPrices[planId];
       if (!info || !startStr) return startStr;
-      if (info.duration === "DAILY") return addDays(startStr, 1);
+      if (info.duration === "DAILY") return startStr;
       if (info.duration === "WEEKLY") return addDays(startStr, 7);
       return addMonthsClamped(startStr, 1);
     }

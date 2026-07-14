@@ -2,6 +2,7 @@ from datetime import date, timedelta
 from dateutil.relativedelta import relativedelta
 from django.core.exceptions import ValidationError
 from django.db import models
+from django.utils import timezone
 
 from configuration.choices import DocType
 from configuration.models import CreatedByModel
@@ -28,6 +29,7 @@ class Client(CreatedByModel):
     health            = models.CharField("Datos de salud", max_length=200, blank=True)
     emergency_contact = models.CharField("Contacto de emergencia", max_length=160, blank=True)
     created_at        = models.DateTimeField(auto_now_add=True)
+    deactivated_at    = models.DateTimeField("Inactivo desde", null=True, blank=True)
 
     class Meta:
         ordering = ["full_name"]
@@ -182,7 +184,15 @@ class Client(CreatedByModel):
         mente: se conserva su historial de pagos, membresías y asistencias,
         solo deja de listarse salvo que se filtre por estatus Inactivo)."""
         self.status = self.Status.INACTIVE
-        self.save(update_fields=["status"])
+        self.deactivated_at = timezone.now()
+        self.save(update_fields=["status", "deactivated_at"])
+        return self
+
+    def activate(self):
+        """Reactiva a un cliente inactivo (revierte la baja lógica)."""
+        self.status = self.Status.ACTIVE
+        self.deactivated_at = None
+        self.save(update_fields=["status", "deactivated_at"])
         return self
 
     def recompute_status(self):
@@ -242,7 +252,11 @@ class Membership(CreatedByModel):
     @property
     def days_badge(self):
         """(texto, clase) con los días disponibles o de mora de ESTA
-        membresía en particular, en el mismo estilo que el badge de estado."""
+        membresía en particular, en el mismo estilo que el badge de estado.
+        Los planes diarios son un pase de un día: no acumulan mora (mismo
+        criterio que recompute_status)."""
+        if self.plan.duration == Plan.Duration.DAILY:
+            return ("Sesión", "diario")
         if not self.end_date:
             return None
         today = date.today()
@@ -252,8 +266,9 @@ class Membership(CreatedByModel):
 
     def compute_end_date(self):
         if self.is_custom and self.amount:
-            self.days = self.plan.prorated_days(self.amount, self.currency, self.start_date)
-            return self.start_date + timedelta(days=self.days)
+            end = self.plan.custom_end_date(self.amount, self.currency, self.start_date)
+            self.days = (end - self.start_date).days
+            return end
         return self.plan.end_date_from(self.start_date)
 
     def clean(self):
@@ -286,3 +301,21 @@ class Freeze(CreatedByModel):
         ordering = ["-created_at"]
         verbose_name = "Congelación"
         verbose_name_plural = "Congelaciones"
+
+
+def detail_context(client, **extra):
+    """Arma el contexto completo del perfil de un cliente (planes, pagos
+    pendientes, congelación activa, historial de pagos). Vive en models.py
+    (no en client/views.py) para poder reutilizarse desde otras apps
+    (Pagos, Asistencia) sin generar un import circular con client/views.py,
+    que a su vez importa de payments/views.py."""
+    memberships = list(client.memberships.select_related("plan", "plan__service", "trainer"))
+    ctx = {
+        "client": client,
+        "memberships": memberships,
+        "pending_memberships": [m for m in memberships if m.is_overdue],
+        "freeze": client.current_freeze,
+        "payments": client.payments.select_related("plan").order_by("-created_at")[:10],
+    }
+    ctx.update(extra)
+    return ctx

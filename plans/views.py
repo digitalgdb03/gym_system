@@ -4,7 +4,7 @@ from django.db.models import Q
 from django.urls import reverse_lazy
 from django.views.generic import ListView, CreateView, UpdateView, DeleteView
 
-from configuration.utils import is_ajax, paginate
+from configuration.utils import is_ajax, paginate, PerPageMixin
 from services.models import Service
 from user.permissions import FullAccessRequiredMixin
 from .models import Plan
@@ -13,10 +13,10 @@ from .forms import PlanForm
 TEMPLATE = "plans/plans.html"
 
 
-class PlanList(LoginRequiredMixin, ListView):
+class PlanList(LoginRequiredMixin, PerPageMixin, ListView):
     template_name = TEMPLATE
     context_object_name = "areas"
-    paginate_by = 8
+    paginate_by = 10
 
     def get_template_names(self):
         return ["plans/_results.html"] if is_ajax(self.request) else [TEMPLATE]
@@ -37,7 +37,7 @@ class _Page(LoginRequiredMixin, FullAccessRequiredMixin):
 
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
-        page = paginate(self.request, Service.objects.prefetch_related("plans").order_by("-created_at"), per_page=8)
+        page = paginate(self.request, Service.objects.prefetch_related("plans").order_by("-created_at"))
         ctx["areas"] = page
         ctx["page_obj"] = page
         ctx["show_form"] = True
@@ -68,7 +68,7 @@ class PlanDelete(LoginRequiredMixin, FullAccessRequiredMixin, DeleteView):
 
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
-        page = paginate(self.request, Service.objects.prefetch_related("plans").order_by("-created_at"), per_page=8)
+        page = paginate(self.request, Service.objects.prefetch_related("plans").order_by("-created_at"))
         ctx["areas"] = page
         ctx["page_obj"] = page
         ctx["show_delete"] = True

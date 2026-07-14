@@ -1,11 +1,13 @@
 {% load gym_extras %}
 <div class="table-wrap"><table>
-  <thead><tr><th>Cliente</th><th>Plan pagado</th><th>Planes del cliente</th><th>Monto</th><th>Método</th><th>Fecha</th><th>Registrado por</th></tr></thead>
+  <thead><tr><th>Cliente</th><th>Plan pagado</th><th>Inicio del plan</th><th>Vence</th><th>Planes del cliente</th><th>Monto</th><th>Método</th><th>Fecha</th><th>Registrado por</th><th></th></tr></thead>
   <tbody>
   {% for p in payments %}
     <tr>
       <td data-label="Cliente"><div class="cell-name"><div class="av {% cycle '' 'o' 'n' %}">{{ p.client.full_name|initials }}</div><b>{{ p.client.full_name }}</b></div></td>
       <td data-label="Plan pagado">{{ p.plan.label }}</td>
+      <td data-label="Inicio del plan">{{ p.start_date|date:"d/m/Y"|default:"—" }}</td>
+      <td data-label="Vence">{{ p.end_date|date:"d/m/Y"|default:"—" }}</td>
       <td data-label="Planes del cliente">
         {% if p.client.memberships.all %}
           <div class="plan-stack">
@@ -24,7 +26,12 @@
       <td data-label="Método">{{ p.get_method_display }} <span class="mon-tag {% if p.currency == 'CASH' %}div{% else %}bcv{% endif %}">{% if p.currency == 'CASH' %}Divisas{% else %}BCV{% endif %}</span></td>
       <td data-label="Fecha">{{ p.created_at|date:"d/m/Y g:i A" }}</td>
       <td data-label="Registrado por">{{ p.created_by.full_name|default:"—" }}</td>
+      <td data-label="">
+        <div class="row-actions">
+          <a class="icon-btn" href="{% url 'payments:list' %}?action=view_client&client={{ p.client.pk }}" title="Ver información del cliente"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/></svg></a>
+        </div>
+      </td>
     </tr>
-  {% empty %}<tr><td colspan="7" style="text-align:center;color:var(--muted)">Sin pagos.</td></tr>{% endfor %}
+  {% empty %}<tr><td colspan="10" style="text-align:center;color:var(--muted)">Sin pagos.</td></tr>{% endfor %}
   </tbody>
 </table></div>{% include "_partials/pagination.html" %}

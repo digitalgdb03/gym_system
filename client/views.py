@@ -7,12 +7,13 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse, reverse_lazy
 from django.views.generic import ListView, View, UpdateView, DeleteView
 
-from configuration.utils import is_ajax, paginate, plan_trainer_map_json, plan_prices_json, client_plan_end_dates_json
+from configuration.utils import (is_ajax, paginate, PerPageMixin, plan_trainer_map_json, plan_prices_json,
+                                 client_plan_end_dates_json)
 from payments.models import Payment
 from payments.views import _renew_membership
 from plans.models import Plan
 from user.permissions import FullAccessRequiredMixin, full_access_required
-from .models import Client, Membership, Freeze
+from .models import Client, Membership, Freeze, detail_context
 from .forms import ClientForm, FreezeForm, InitialPaymentForm, AddPlanForm, ChangePlanForm
 
 TEMPLATE = "client/client.html"
@@ -66,11 +67,11 @@ def _change_plan_ctx(membership, form, frm):
     }
 
 
-class ClientList(LoginRequiredMixin, ListView):
+class ClientList(LoginRequiredMixin, PerPageMixin, ListView):
     model = Client
     template_name = TEMPLATE
     context_object_name = "clients"
-    paginate_by = 15
+    paginate_by = 10
 
     def get_template_names(self):
         return ["client/_results.html"] if is_ajax(self.request) else [TEMPLATE]
@@ -106,7 +107,10 @@ class ClientList(LoginRequiredMixin, ListView):
             ctx.update(_freeze_ctx(target, FreezeForm(), "list"))
         if self.request.GET.get("action") == "membership" and self.request.GET.get("client"):
             target = get_object_or_404(Client, pk=self.request.GET["client"])
-            ctx.update(_membership_ctx(target, AddPlanForm(client=target), "list"))
+            if target.status != Client.Status.INACTIVE:
+                ctx.update(_membership_ctx(target, AddPlanForm(client=target), "list"))
+            else:
+                messages.error(self.request, "No se puede agregar un plan a un cliente inactivo.")
         if self.request.GET.get("action") == "change_plan" and self.request.GET.get("membership"):
             target_m = get_object_or_404(Membership, pk=self.request.GET["membership"])
             if target_m.client.can_change_plan:
@@ -134,12 +138,15 @@ def register_client_with_payment(client_form, payment_form, user):
             is_custom=payment_form.cleaned_data["is_custom"],
             created_by=user,
         )
-        membership = _renew_membership(
+        membership, start, end = _renew_membership(
             client, plan, user=user, is_custom=payment.is_custom,
             amount=payment.amount_usd, currency=payment.currency,
             start_override=payment_form.cleaned_data.get("start_date"),
             end_override=payment_form.cleaned_data.get("end_date"),
         )
+        payment.start_date = start
+        payment.end_date = end
+        payment.save(update_fields=["start_date", "end_date"])
         trainer = payment_form.cleaned_data.get("trainer")
         if trainer:
             # Los planes diarios no generan membresía: el entrenador de esa
@@ -241,19 +248,6 @@ class ClientDelete(LoginRequiredMixin, FullAccessRequiredMixin, DeleteView):
         return redirect(self.success_url)
 
 
-def detail_context(client, **extra):
-    memberships = list(client.memberships.select_related("plan", "plan__service", "trainer"))
-    ctx = {
-        "client": client,
-        "memberships": memberships,
-        "pending_memberships": [m for m in memberships if m.is_overdue],
-        "freeze": client.current_freeze,
-        "payments": client.payments.select_related("plan").order_by("-created_at")[:10],
-    }
-    ctx.update(extra)
-    return ctx
-
-
 @login_required
 def client_detail(request, pk):
     client = get_object_or_404(Client, pk=pk)
@@ -261,7 +255,10 @@ def client_detail(request, pk):
     action = request.GET.get("action")
     extra = {}
     if action == "membership":
-        extra = _membership_ctx(client, AddPlanForm(client=client), "detail")
+        if client.status != Client.Status.INACTIVE:
+            extra = _membership_ctx(client, AddPlanForm(client=client), "detail")
+        else:
+            messages.error(request, "No se puede agregar un plan a un cliente inactivo.")
     elif action == "freeze":
         extra = _freeze_ctx(client, FreezeForm(), "detail")
     elif action == "change_plan" and request.GET.get("membership"):
@@ -280,6 +277,11 @@ def membership_add(request, pk):
     renueva la membresía con el mismo flujo que un pago normal."""
     client = get_object_or_404(Client, pk=pk)
     frm = request.POST.get("from") or request.GET.get("from") or "detail"
+
+    if client.status == Client.Status.INACTIVE:
+        messages.error(request, "No se puede agregar un plan a un cliente inactivo.")
+        return redirect(_back_url(frm, client))
+
     form = AddPlanForm(request.POST or None, client=client)
 
     if request.method == "POST" and form.is_valid():
@@ -293,12 +295,15 @@ def membership_add(request, pk):
                 is_custom=form.cleaned_data["is_custom"],
                 created_by=request.user,
             )
-            membership = _renew_membership(
+            membership, start, end = _renew_membership(
                 client, plan, user=request.user, is_custom=payment.is_custom,
                 amount=payment.amount_usd, currency=payment.currency,
                 start_override=form.cleaned_data.get("start_date"),
                 end_override=form.cleaned_data.get("end_date"),
             )
+            payment.start_date = start
+            payment.end_date = end
+            payment.save(update_fields=["start_date", "end_date"])
             trainer = form.cleaned_data.get("trainer")
             if trainer:
                 # Los planes diarios no generan membresía: el entrenador de esa
@@ -406,4 +411,16 @@ def client_unfreeze(request, pk):
     if request.method == "POST":
         client.unfreeze()
         messages.success(request, "Membresía reactivada.")
+    return redirect(_back_url(frm, client))
+
+
+@login_required
+def client_activate(request, pk):
+    """Reactiva a un cliente inactivo (revierte la baja lógica) y vuelve a
+    la página desde la que se pidió (lista o perfil)."""
+    client = get_object_or_404(Client, pk=pk)
+    frm = request.POST.get("from") or request.GET.get("from") or "detail"
+    if request.method == "POST":
+        client.activate()
+        messages.success(request, "Cliente activado.")
     return redirect(_back_url(frm, client))

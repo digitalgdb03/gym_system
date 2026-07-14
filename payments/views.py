@@ -1,16 +1,17 @@
-from datetime import date, timedelta
+from datetime import date
 
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.db import transaction
 from django.db.models import Q, Sum
-from django.shortcuts import redirect, render
+from django.shortcuts import get_object_or_404, redirect, render
+from django.urls import reverse_lazy
 from django.utils import timezone
 from django.views.generic import TemplateView, View
 
 from client.forms import ClientForm
-from client.models import Client, Membership
+from client.models import Client, Membership, detail_context
 from configuration.utils import is_ajax, paginate, client_plans_json, client_plan_end_dates_json, plan_prices_json
 from plans.models import Plan
 from .models import Payment
@@ -31,11 +32,12 @@ def _renew_membership(client, plan, user=None, is_custom=False, amount=None, cur
     en el formulario, se respetan en vez de calcularlas.
     Los planes diarios son un pase de un día, no una membresía del cliente:
     no generan/renuevan Membership (para no figurar como "un plan más" ni
-    afectar su estatus de moroso); solo queda el registro del Payment."""
-    if plan.duration == Plan.Duration.DAILY:
-        return None
-
-    membership = client.memberships.filter(plan=plan).order_by("-end_date").first()
+    afectar su estatus de moroso); solo queda el registro del Payment.
+    Devuelve (membership, start, end): start/end se calculan siempre (incluso
+    para planes diarios, sin Membership) para poder guardarlos en el Payment
+    como fecha de inicio/fin del plan pagado."""
+    is_daily = plan.duration == Plan.Duration.DAILY
+    membership = None if is_daily else client.memberships.filter(plan=plan).order_by("-end_date").first()
     today = date.today()
 
     # NUEVA LÓGICA DE RENOVACIÓN
@@ -65,10 +67,12 @@ def _renew_membership(client, plan, user=None, is_custom=False, amount=None, cur
     if end_override:
         end = end_override
     elif is_custom and amount:
-        days = plan.prorated_days(amount, currency, start)
-        end = start + timedelta(days=days)
+        end = plan.custom_end_date(amount, currency, start)
     else:
         end = plan.end_date_from(start)
+
+    if is_daily:
+        return None, start, end
 
     if membership:
         # start_date también se actualiza: siempre debe reflejar el inicio
@@ -80,7 +84,7 @@ def _renew_membership(client, plan, user=None, is_custom=False, amount=None, cur
         membership = Membership.objects.create(client=client, plan=plan, start_date=start, end_date=end,
                                                 created_by=user)
     client.recompute_status()
-    return membership
+    return membership, start, end
 
 
 def _today_stats():
@@ -112,8 +116,12 @@ class PaymentList(LoginRequiredMixin, TemplateView):
         return super().get(request, *args, **kwargs)
 
     def get_context_data(self, **kwargs):
-        return {**super().get_context_data(**kwargs), **_today_stats(),
-                **_list_ctx(self.request, self.request.GET.get("q"))}
+        ctx = {**super().get_context_data(**kwargs), **_today_stats(),
+               **_list_ctx(self.request, self.request.GET.get("q"))}
+        if self.request.GET.get("action") == "view_client" and self.request.GET.get("client"):
+            target = get_object_or_404(Client, pk=self.request.GET["client"])
+            ctx["view_client_ctx"] = detail_context(target, close_url=reverse_lazy("payments:list"))
+        return ctx
 
 
 PAYABLE_STATUSES = [Client.Status.ACTIVE, Client.Status.OVERDUE]
@@ -124,15 +132,19 @@ def client_lookup(request):
     """Búsqueda de cliente por cédula o nombre para el formulario de Pagos
     (reemplaza el select por un buscador con registro inline si no existe).
     Solo se puede pagar a clientes Activos o Morosos: congelados e
-    inactivos no aparecen entre los resultados."""
+    inactivos no aparecen entre los resultados. Si la cédula buscada es de
+    un cliente Inactivo, se avisa en vez de ofrecer registrarlo de nuevo."""
     q = request.GET.get("q", "").strip()
     clients = []
+    inactive_client = None
     if q:
         q_id = q.replace(".", "").replace("-", "")
-        clients = Client.objects.filter(
-            Q(full_name__icontains=q) | Q(id_card__icontains=q_id), status__in=PAYABLE_STATUSES
-        ).order_by("full_name")[:8]
-    return render(request, "payments/_client_lookup.html", {"clients": clients, "q": q})
+        matches = Client.objects.filter(Q(full_name__icontains=q) | Q(id_card__icontains=q_id))
+        clients = matches.filter(status__in=PAYABLE_STATUSES).order_by("full_name")[:8]
+        if not clients:
+            inactive_client = matches.filter(status=Client.Status.INACTIVE).order_by("full_name").first()
+    return render(request, "payments/_client_lookup.html",
+                  {"clients": clients, "q": q, "inactive_client": inactive_client})
 
 
 class PaymentCreate(LoginRequiredMixin, View):
@@ -168,7 +180,17 @@ class PaymentCreate(LoginRequiredMixin, View):
             if not client:
                 messages.error(request, "Selecciona un cliente válido de la lista.")
         else:
-            client_form = ClientForm(request.POST)
+            doc_type = (request.POST.get("doc_type") or "").strip()
+            id_card = (request.POST.get("id_card") or "").replace(".", "").replace("-", "").strip()
+            inactive = None
+            if doc_type and id_card:
+                inactive = Client.objects.filter(doc_type=doc_type, id_card=id_card,
+                                                 status=Client.Status.INACTIVE).first()
+            if inactive:
+                messages.error(request, f"{inactive.full_name} está inactivo. "
+                                        "Actívalo desde su perfil antes de registrar un pago.")
+            else:
+                client_form = ClientForm(request.POST)
 
         client_ready = client is not None or (client_form is not None and client_form.is_valid())
 
@@ -182,10 +204,14 @@ class PaymentCreate(LoginRequiredMixin, View):
                 payment.client = client
                 payment.created_by = request.user
                 payment.save()
-                _renew_membership(client, payment.plan, user=request.user, is_custom=payment.is_custom,
-                                  amount=payment.amount_usd, currency=payment.currency,
-                                  start_override=form.cleaned_data.get("start_date"),
-                                  end_override=form.cleaned_data.get("end_date"))
+                _, start, end = _renew_membership(
+                    client, payment.plan, user=request.user, is_custom=payment.is_custom,
+                    amount=payment.amount_usd, currency=payment.currency,
+                    start_override=form.cleaned_data.get("start_date"),
+                    end_override=form.cleaned_data.get("end_date"))
+                payment.start_date = start
+                payment.end_date = end
+                payment.save(update_fields=["start_date", "end_date"])
             messages.success(request, "Pago guardado.")
             return redirect("payments:list")
 

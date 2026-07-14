@@ -57,7 +57,7 @@
         {% endfor %}
       </div>
       <div class="modal-actions">
-        {% if object %}<a class="btn btn-danger" href="{% url 'user:delete' object.pk %}">Eliminar</a>{% endif %}
+        {% if object and object.is_active %}<a class="btn btn-danger" href="{% url 'user:delete' object.pk %}">Eliminar</a>{% endif %}
         <a class="btn btn-ghost" href="{% url 'user:list' %}">Cancelar</a>
         <button class="btn btn-primary">Guardar</button>
       </div>
@@ -70,7 +70,7 @@
 <div class="modal-overlay" data-close="{% url 'user:list' %}">
   <div class="modal" role="dialog">
     <h3 class="modal-title">Eliminar usuario</h3>
-    <div class="modal-body"><p>¿Eliminar a <b>{{ object.full_name }}</b>?</p></div>
+    <div class="modal-body"><p>¿Eliminar a <b>{{ object.full_name }}</b>? Queda inactivo y no podrá iniciar sesión; se conserva su historial.</p></div>
     <form method="post">{% csrf_token %}
       <div class="modal-actions">
         <a class="btn btn-ghost" href="{% url 'user:list' %}">Cancelar</a>

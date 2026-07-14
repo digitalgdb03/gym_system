@@ -5,7 +5,7 @@ from django.shortcuts import redirect
 from django.urls import reverse_lazy
 from django.views.generic import ListView, CreateView, UpdateView, DeleteView
 
-from configuration.utils import is_ajax, paginate
+from configuration.utils import is_ajax, paginate, PerPageMixin
 from user.permissions import FullAccessRequiredMixin
 from .models import Service
 from .forms import ServiceForm
@@ -13,11 +13,11 @@ from .forms import ServiceForm
 TEMPLATE = "services/services.html"
 
 
-class ServiceList(LoginRequiredMixin, FullAccessRequiredMixin, ListView):
+class ServiceList(LoginRequiredMixin, FullAccessRequiredMixin, PerPageMixin, ListView):
     model = Service
     template_name = TEMPLATE
     context_object_name = "services"
-    paginate_by = 15
+    paginate_by = 10
 
     def get_template_names(self):
         return ["services/_results.html"] if is_ajax(self.request) else [TEMPLATE]

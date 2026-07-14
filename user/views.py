@@ -3,12 +3,12 @@ from django.contrib.auth import update_session_auth_hash
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.db.models import Q
-from django.shortcuts import redirect, render
+from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse_lazy
 from django.utils.text import slugify
-from django.views.generic import ListView, CreateView, UpdateView, DeleteView
+from django.views.generic import ListView, CreateView, UpdateView, DeleteView, View
 
-from configuration.utils import is_ajax, paginate
+from configuration.utils import is_ajax, paginate, PerPageMixin
 from .models import User
 from .forms import StaffForm, ProfileForm
 from .permissions import FullAccessRequiredMixin
@@ -25,11 +25,11 @@ def _unique_username(base):
     return username
 
 
-class StaffList(LoginRequiredMixin, FullAccessRequiredMixin, ListView):
+class StaffList(LoginRequiredMixin, FullAccessRequiredMixin, PerPageMixin, ListView):
     model = User
     template_name = TEMPLATE
     context_object_name = "staff"
-    paginate_by = 15
+    paginate_by = 10
 
     def get_template_names(self):
         return ["user/_results.html"] if is_ajax(self.request) else [TEMPLATE]
@@ -83,6 +83,9 @@ class StaffUpdate(_Page, UpdateView):
 
 
 class StaffDelete(LoginRequiredMixin, FullAccessRequiredMixin, DeleteView):
+    """"Eliminar" no borra el registro: solo desactiva al usuario
+    (is_active = False), para conservar su historial y que no pueda
+    iniciar sesión."""
     model = User
     template_name = TEMPLATE
     success_url = reverse_lazy("user:list")
@@ -100,9 +103,19 @@ class StaffDelete(LoginRequiredMixin, FullAccessRequiredMixin, DeleteView):
         if u.classes_as_main.exists() or u.classes_as_second.exists():
             messages.error(self.request, "No se puede eliminar: el instructor tiene clases asignadas.")
             return redirect("user:list")
-        response = super().form_valid(form)
+        u.is_active = False
+        u.save(update_fields=["is_active"])
         messages.success(self.request, "Usuario eliminado.")
-        return response
+        return redirect(self.success_url)
+
+
+class StaffActivate(LoginRequiredMixin, FullAccessRequiredMixin, View):
+    def post(self, request, pk):
+        u = get_object_or_404(User, pk=pk)
+        u.is_active = True
+        u.save(update_fields=["is_active"])
+        messages.success(request, "Usuario activado.")
+        return redirect("user:list")
 
 
 @login_required

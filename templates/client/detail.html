@@ -13,10 +13,14 @@
       <form method="post" action="{% url 'client:unfreeze' client.pk %}">{% csrf_token %}
         <input type="hidden" name="from" value="detail">
         <button class="btn btn-ghost">Descongelar</button></form>
+    {% elif client.status == 'INACTIVE' %}
+      <form method="post" action="{% url 'client:activate' client.pk %}">{% csrf_token %}
+        <input type="hidden" name="from" value="detail">
+        <button class="btn btn-ghost">Activar</button></form>
     {% else %}
       <a class="btn btn-ghost" href="?action=freeze">Congelar</a>
     {% endif %}
-    {% if user.has_full_access %}
+    {% if user.has_full_access and client.status != 'INACTIVE' %}
     <a class="btn btn-primary" href="?action=membership">+ Agregar plan</a>
     {% endif %}
   </div>
@@ -27,6 +31,7 @@
   <div><h2>{{ client.full_name }}</h2>
     <div class="profile-meta"><span class="badge {{ client.status_badge_class }}">{{ client.get_status_display }}</span> · {{ client.full_id }}</div>
     {% if client.created_by %}<div class="section-note" style="margin:4px 0 0">Registrado por {{ client.created_by.full_name }}</div>{% endif %}
+    {% if client.status == 'INACTIVE' and client.deactivated_at %}<div class="section-note" style="margin:4px 0 0">Inactivo desde {{ client.deactivated_at|date:"d/m/Y g:i A" }}</div>{% endif %}
   </div>
 </div>
 
@@ -88,11 +93,18 @@
 
 <div class="card" style="margin-top:20px"><h3>Historial de pagos</h3>
   <div class="table-wrap"><table>
-    <thead><tr><th>Plan</th><th>Monto</th><th>Método</th><th>Fecha</th></tr></thead>
+    <thead><tr><th>Plan</th><th>Monto</th><th>Método</th><th>Fecha de pago</th><th>Inicio del plan</th><th>Vence</th></tr></thead>
     <tbody>
     {% for p in payments %}
-      <tr><td>{{ p.plan.label }}</td><td><span class="usd">${{ p.amount_usd }}</span></td><td>{{ p.get_method_display }}</td><td>{{ p.created_at|date:"d/m/Y" }}</td></tr>
-    {% empty %}<tr><td colspan="4">Sin pagos.</td></tr>{% endfor %}
+      <tr>
+        <td>{{ p.plan.label }}</td>
+        <td><span class="usd">${{ p.amount_usd }}</span></td>
+        <td>{{ p.get_method_display }}</td>
+        <td>{{ p.created_at|date:"d/m/Y" }}</td>
+        <td>{{ p.start_date|date:"d/m/Y"|default:"—" }}</td>
+        <td>{{ p.end_date|date:"d/m/Y"|default:"—" }}</td>
+      </tr>
+    {% empty %}<tr><td colspan="6">Sin pagos.</td></tr>{% endfor %}
     </tbody>
   </table></div>
 </div>

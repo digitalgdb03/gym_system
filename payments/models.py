@@ -28,6 +28,8 @@ class Payment(CreatedByModel):
     currency   = models.CharField("Moneda", max_length=4, choices=Plan.Currency.choices,
                                   default=Plan.Currency.BCV)
     is_custom  = models.BooleanField("Personalizado", default=False)
+    start_date = models.DateField("Inicio del plan", null=True, blank=True)
+    end_date   = models.DateField("Vence el plan", null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:

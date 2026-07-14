@@ -1,7 +1,8 @@
 from decimal import Decimal, ROUND_HALF_UP
 from django import forms
-from configuration.form_mixins import PlaceholderChoiceMixin
+from configuration.form_mixins import AmountFieldsValidationMixin, PlaceholderChoiceMixin
 from configuration.models import GymConfig
+from plans.models import Plan
 from .models import Payment
 
 CENTS = Decimal("0.01")
@@ -11,7 +12,9 @@ def _round2(value):
     return Decimal(value).quantize(CENTS, rounding=ROUND_HALF_UP)
 
 
-class PaymentForm(PlaceholderChoiceMixin, forms.ModelForm):
+class PaymentForm(AmountFieldsValidationMixin, PlaceholderChoiceMixin, forms.ModelForm):
+    amount_fields = ["amount_usd", "amount_bs"]
+
     start_date = forms.DateField(label="Inicio del plan", required=False,
                                  widget=forms.DateInput(attrs={"type": "date"}))
     end_date = forms.DateField(label="Vencimiento del plan", required=False,
@@ -39,9 +42,13 @@ class PaymentForm(PlaceholderChoiceMixin, forms.ModelForm):
     def clean(self):
         cleaned = super().clean()
         start_date, end_date = cleaned.get("start_date"), cleaned.get("end_date")
-        if start_date and end_date and end_date <= start_date:
-            self.add_error("end_date", "El vencimiento debe ser posterior al inicio.")
         plan, method = cleaned.get("plan"), cleaned.get("method")
+        if start_date and end_date:
+            # Los planes diarios vencen el mismo día del pago (inicio = fin);
+            # para el resto, el vencimiento debe ser posterior al inicio.
+            is_daily = plan and plan.duration == Plan.Duration.DAILY
+            if end_date < start_date or (end_date == start_date and not is_daily):
+                self.add_error("end_date", "El vencimiento debe ser posterior al inicio.")
         if not (plan and method):
             return cleaned
 

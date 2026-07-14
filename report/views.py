@@ -174,7 +174,7 @@ def _clients_queryset(request):
 
 def _clients_context(request):
     qs = _clients_queryset(request)
-    page = paginate(request, qs, per_page=15)
+    page = paginate(request, qs)
     for c in page:
         c.recompute_status()
     return {
@@ -215,7 +215,7 @@ def _plans_queryset(request):
 
 def _plans_context(request):
     qs = _plans_queryset(request)
-    page = paginate(request, qs, per_page=15)
+    page = paginate(request, qs)
     return {
         "report_plans": page,
         "page_obj": page,
@@ -258,7 +258,7 @@ def _payments_queryset(request):
 
 def _payments_context(request):
     qs = _payments_queryset(request)
-    page = paginate(request, qs, per_page=15)
+    page = paginate(request, qs)
     return {
         "report_payments": page,
         "page_obj": page,

@@ -1,5 +1,6 @@
 import calendar
 from datetime import timedelta
+from decimal import Decimal, ROUND_HALF_UP
 from dateutil.relativedelta import relativedelta
 from django.db import models
 
@@ -51,14 +52,39 @@ class Plan(CreatedByModel):
 
     def end_date_from(self, start):
         if self.duration == self.Duration.DAILY:
-            return start + timedelta(days=1)
+            return start
         if self.duration == self.Duration.WEEKLY:
             return start + timedelta(days=7)
         return start + relativedelta(months=1)
 
-    def prorated_days(self, amount, currency, start):
-        """Días de servicio que cubre 'amount' según el precio diario del
-        plan (precio del mes / días del mes de 'start')."""
-        dim = calendar.monthrange(start.year, start.month)[1]
-        per_day = self.price(currency) / dim
-        return int(amount / per_day) if per_day else 0
+    def _unit_days(self, start):
+        """Días que representa un periodo completo del plan, para prorratear
+        pagos personalizados parciales (1 para diario, 7 para semanal, los
+        días del mes de 'start' para mensual)."""
+        if self.duration == self.Duration.DAILY:
+            return 1
+        if self.duration == self.Duration.WEEKLY:
+            return 7
+        return calendar.monthrange(start.year, start.month)[1]
+
+    def custom_end_date(self, amount, currency, start):
+        """Vencimiento para un pago personalizado. Si 'amount' cubre una
+        cantidad entera de periodos del plan (mismo criterio que un pago
+        completo, con tolerancia de un centavo), se usa la misma regla de
+        fecha que un pago normal (start + 7 días por semana, o
+        relativedelta de N meses) para que coincida siempre con esa regla
+        (ej. sábado -> sábado siguiente, 11-07 -> 11-08), en vez de
+        prorratear por días de más o de menos según el mes calendario.
+        Si el monto es parcial, se prorratea por el precio diario del plan."""
+        price = self.price(currency)
+        if not price:
+            return start
+        if self.duration != self.Duration.DAILY:
+            periods = int((amount / price).to_integral_value(rounding=ROUND_HALF_UP))
+            if periods >= 1 and abs(amount - periods * price) <= Decimal("0.01"):
+                if self.duration == self.Duration.WEEKLY:
+                    return start + timedelta(days=7 * periods)
+                return start + relativedelta(months=periods)
+        per_day = price / self._unit_days(start)
+        days = int(amount / per_day) if per_day else 0
+        return start + timedelta(days=days)
